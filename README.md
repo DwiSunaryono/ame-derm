@@ -8,7 +8,7 @@ Verification Algorithm for Dermoscopic Skin-Lesion Classification**
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Status](https://img.shields.io/badge/status-research%20code-orange)
-![Reproducible](https://img.shields.io/badge/reproducible-ladder%20%2B%20external%20%2B%20significance-green)
+![Reproducible](https://img.shields.io/badge/vs%20PanDerm-%2B4.7pts%2C%205%2F5%20folds%2C%20p%3D0.031-green)
 ![Datasets](https://img.shields.io/badge/datasets-HAM10000%2C%20BCN20000%2C%20ISIC%2C%20PH2-blueviolet)
 
 </div>
@@ -112,33 +112,58 @@ cd results
 python scripts/reproduce_tables.py
 ```
 
-### Main ablation ladder (macro-F1, %, mean ± std over 5 lesion-grouped folds)
+### Headline result: DINOv2 (AME-Derm's backbone) beats the PanDerm foundation model
 
-| Method | Macro-F1 |
-|---|---|
-| Single DINOv2 generalist | 80.00 ± 1.69 |
-| Symmetric MoE (base experts + base generalist) | 80.97 ± 1.58 |
-| **AME-Derm** (asymmetric)* | **81.82 ± 1.82** |
-
-*\* Raw per-fold output for the asymmetric AME-Derm row was not recovered
-from archived logs; this row is `champ_static_f1` (raw, from
-[`results/data/moe_champion_5fold_results.json`](results/data/moe_champion_5fold_results.json))
-plus the per-fold delta reported in the manuscript. See
-[`results/README.md`](results/README.md) for exactly what is raw vs.
-manuscript-sourced here.*
-
-### Statistical significance (AME-Derm vs. symmetric MoE)
+The paper's most robust claim, and — unlike every table below it — **both
+sides of this comparison are computed from scratch in this repository**:
+PanDerm's macro-F1 is recomputed here from its own raw per-sample
+predictions, not copied from the manuscript.
 
 ```bash
 python evaluation/statistical_significance.py
 ```
 
-Reproduces the manuscript's reported **paired t-test: t(4)=2.30, p=0.041**
-and **Wilcoxon signed-rank: p≈0.062** (manuscript: 0.063) directly from the
-five per-fold differences {+1.33, +0.71, +0.73, +1.81, −0.37} points — 4 of 5
-folds favor AME-Derm; the effect is small and the paper describes it as
-"modest," resting the asymmetry claim on mechanism and fold-wise consistency
-as much as on significance.
+| Fold | DINOv2 generalist | PanDerm generalist | Δ |
+|---|---|---|---|
+| 0 | 79.37 | 73.57 | +5.80 |
+| 1 | 78.48 | 73.09 | +5.39 |
+| 2 | 79.35 | 73.86 | +5.49 |
+| 3 | 79.91 | 77.62 | +2.29 |
+| 4 | 82.88 | 78.56 | +4.33 |
+| **mean** | **80.00** | **75.34** | **+4.66** |
+
+**5 of 5 folds favor DINOv2** (exact sign test *p* = 0.031; paired *t*-test
+*p* = 0.001) — reproducing the manuscript's reported +4.7 points, matching
+to within rounding. The full backbone × MoE 2×2 (Table `tab:2x2`) is:
+
+| Backbone | Single generalist | MoE |
+|---|---|---|
+| DINOv2 | 80.00 (raw) | **81.82** (AME-Derm; reconstructed†) |
+| PanDerm | 75.34 (raw) | 77.34 (raw) |
+
+Full per-fold data in [`results/tables/panderm_comparison.csv`](results/tables/panderm_comparison.csv).
+
+### Secondary result: asymmetric vs. symmetric MoE (modest, borderline)
+
+The paper's *other* headline comparison — whether the asymmetric mixture
+improves on a capacity-matched symmetric mixture — is a much smaller effect
+that the manuscript itself calls "small and borderline":
+
+| Method | Macro-F1 |
+|---|---|
+| Single DINOv2 generalist | 80.00 ± 1.69 |
+| Symmetric MoE (base experts + base generalist) | 80.97 ± 1.58 |
+| AME-Derm (asymmetric)† | 81.82 ± 1.82 |
+
+Paired *t*-test: *t*(4)=2.30, *p*=0.041; Wilcoxon signed-rank: *p*≈0.062
+(manuscript: 0.063) — only 4 of 5 folds favor AME-Derm here. The manuscript
+rests this claim on mechanism and fold-wise consistency as much as on
+significance; the PanDerm comparison above is the more robust result.
+
+*† Raw per-fold output for the asymmetric AME-Derm row was not recovered
+from archived logs; this row is `champ_static_f1` (raw) plus the per-fold
+delta reported in the manuscript. See [`results/README.md`](results/README.md)
+for exactly what is raw vs. manuscript-sourced.*
 
 ### External validation on BCN20000 (macro-F1, %, computed from raw per-sample predictions)
 

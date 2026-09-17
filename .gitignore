@@ -13,6 +13,7 @@ venv/
 *.csv
 *.json
 !results/data/**/*.json
+!results/data/**/*.csv
 !results/tables/**/*.csv
 outputs/
 checkpoints/

@@ -141,10 +141,15 @@ Paper §"External Validation on an Independent Cohort".
 ## 7. PanDerm comparison (`baselines/panderm_comparison/`)
 
 Paper §"Comparison with a Dermatology Foundation Model Under a Matched
-Protocol". Requires the separate [PanDerm](https://github.com/SiyuanYan1/PanDerm)
-repository and its pretrained weights; `config.AME_DERM_ROOT` (or the
-`AME_DERM_ROOT` environment variable) tells these scripts where to find the
-shared fold CSVs and checkpoints.
+Protocol" — the paper's most robust result (5/5 folds, exact sign test
+p=0.031), reproduced from raw data in
+[`results/data/panderm_baseline/`](../results/data/panderm_baseline) by
+[`evaluation/statistical_significance.py`](../evaluation/statistical_significance.py);
+see [Reproducible results](../README.md#reproducible-results) in the root
+README. Requires the separate [PanDerm](https://github.com/SiyuanYan1/PanDerm)
+repository and its pretrained weights to re-run from scratch;
+`config.AME_DERM_ROOT` (or the `AME_DERM_ROOT` environment variable) tells
+these scripts where to find the shared fold CSVs and checkpoints.
 
 - `dinov2_official_protocol.py` — replicates PanDerm's exact official
   fine-tuning recipe (layer-decay 0.65, mixup 0.8/cutmix 1.0, label

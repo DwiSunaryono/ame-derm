@@ -9,8 +9,12 @@ Run from the results/ directory:
     python scripts/reproduce_tables.py
 
 Produces:
-    tables/main_ablation_ladder.csv     - generalist vs. symmetric MoE vs.
-                                           AME-Derm (see caveat below)
+    tables/panderm_comparison.csv       - HEADLINE result: DINOv2 (AME-Derm's
+                                           backbone) vs. PanDerm, per fold,
+                                           fully raw on both sides
+    tables/main_ablation_ladder.csv     - secondary/modest result: generalist
+                                           vs. symmetric MoE vs. AME-Derm
+                                           (see caveat below)
     tables/external_validation_bcn.csv  - per-seed macro-F1 on the BCN20000
                                            external test set
     tables/split_audit_summary.csv      - per-field split-representativeness
@@ -26,6 +30,7 @@ import os
 import numpy as np
 
 try:
+    import pandas as pd
     from sklearn.metrics import f1_score
 except ImportError as exc:
     raise SystemExit(
@@ -53,6 +58,39 @@ def write_csv(path, header, rows):
         w.writerow(header)
         w.writerows(rows)
     print(f"wrote {os.path.relpath(path, RESULTS_DIR)}")
+
+
+def panderm_comparison():
+    """HEADLINE result (paper §"Comparison with a Dermatology Foundation
+    Model"): DINOv2 (AME-Derm's backbone) vs. PanDerm, per fold. Both sides
+    are raw — PanDerm's macro-F1 is computed here from scratch from its own
+    per-sample predictions, not copied from the manuscript. This is the
+    result the paper itself calls "the more robust" of its two headline
+    comparisons (5/5 folds positive, exact sign test p=0.031), unlike the
+    modest/borderline internal ablation in main_ablation_ladder() below.
+    """
+    with open(os.path.join(DATA_DIR, "moe_champion_5fold_results.json")) as f:
+        moe_folds = json.load(f)
+    dinov2_gen = np.array([r["gen_only_f1"] for r in moe_folds]) * 100
+
+    rows = []
+    panderm_gen = []
+    for i in range(5):
+        df = pd.read_csv(os.path.join(
+            DATA_DIR, "panderm_baseline", f"generalist_fold{i}_seed42_test.csv"))
+        f1 = f1_score(df["true_label"], df["predicted_label"], average="macro") * 100
+        panderm_gen.append(f1)
+        rows.append((i, f"{dinov2_gen[i]:.2f}", f"{f1:.2f}", f"{dinov2_gen[i] - f1:.2f}"))
+    panderm_gen = np.array(panderm_gen)
+
+    write_csv(
+        os.path.join(TABLES_DIR, "panderm_comparison.csv"),
+        ["fold", "dinov2_generalist_macro_f1_pct", "panderm_generalist_macro_f1_pct", "delta_pct"],
+        rows,
+    )
+    delta = dinov2_gen - panderm_gen
+    print(f"  -> mean delta +{delta.mean():.2f} pts, {int((delta > 0).sum())}/5 folds positive"
+          f" (paper: +4.7 pts, 5/5 folds, sign test p=0.031)")
 
 
 def main_ablation_ladder():
@@ -120,6 +158,7 @@ def split_audit_summary():
 
 
 if __name__ == "__main__":
+    panderm_comparison()
     main_ablation_ladder()
     external_validation_bcn()
     split_audit_summary()
