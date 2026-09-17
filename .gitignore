@@ -3,6 +3,7 @@ __pycache__/
 *.pyo
 .venv/
 venv/
+.env
 *.egg-info/
 .ipynb_checkpoints/
 *.pth
