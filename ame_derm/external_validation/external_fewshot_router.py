@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """STRATEGI 3 — FEW-SHOT ADAPTATION (Fine-Tuning Cepat Router MoE) di BCN20000.
 
-Model dilatih 100% HAM10000 (frozen). Hanya lapisan SmartRouter MoE yang
-dilatih ulang pada 10% data BCN20000 (adaptasi), lalu diuji pada sisa 90%.
+Model sudah dilatih penuh pada HAM10000 (frozen). Cuma lapisan SmartRouter MoE
+yang dilatih kembali memakai 10% data BCN20000 (adaptasi), kemudian diuji pada
+sisa 90%.
 
 Narasi: "Rumah sakit baru mengkalibrasi model hanya dengan 10% data lokal
 mereka, tanpa menyentuh kecerdasan utama model generalis."
 
-Protokol per fold 0-4 (konsisten dgn champion & birnet_external_zero_shot.py):
+Protokol tiap fold 0-4 (selaras dgn champion & birnet_external_zero_shot.py):
   - Model FROZEN: gen_pure + eksper torso/limb/head_v2 (TTA 6-view, meta loc).
   - Adapt set = 10% BCN (stratified per label), test set = sisa 90%.
   - Router dilatih HANYA dari probabilitas adapt set (SmartRouter, NLL on
@@ -75,7 +76,7 @@ def load_models(fold, cfg):
 
 
 def merge_with_router_ensemble(gen, exp, metas, routers):
-    """Kembalikan probabilitas merged rata-rata dari ensembel router."""
+    """Hasilkan probabilitas merged hasil rata-rata dari ensembel router."""
     merged = np.zeros_like(gen, dtype=np.float32)
     with torch.no_grad():
         for r in routers:
@@ -113,12 +114,12 @@ def run_fold(fold, adapt_df, test_df, cfg, val_aug, args):
     a_exp = build_exp_arrays(a_tta, adapt_df, head_ver="head_v2")[: len(a_lab)]
     t_exp = build_exp_arrays(t_tta, test_df, head_ver="head_v2")[: len(t_lab)]
 
-    # 1) baseline: gen only (frozen)
+    # 1) baseline: gen saja (frozen)
     gen_macro = macro(t_lab, t_gen.argmax(1))
-    # 2) champion statis 80:20 (frozen)
+    # 2) champion statis 80:20 (dibekukan)
     static_macro = macro(t_lab, (0.8 * t_exp + 0.2 * t_gen).argmax(1))
 
-    # 3) few-shot: fine-tune router PADA adapt (10%) saja
+    # 3) few-shot: latih ulang router HANYA pada adapt (10%)
     routers = train_router_ensemble(a_gen, a_exp, a_meta, a_lab,
                                     n_routers=args.n_routers, epochs=args.epochs)
     t_merged = merge_with_router_ensemble(t_gen, t_exp, t_meta, routers)

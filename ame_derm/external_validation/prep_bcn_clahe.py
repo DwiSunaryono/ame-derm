@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Prep BCN full-frame → CLAHE (LAB) + bilateral filter (lensa Bagian 3.2).
+"""Siapkan BCN full-frame → CLAHE (LAB) + bilateral filter (lensa Bagian 3.2).
 
-Mirip birnet_eq_bcn_clean_eval.prep tapi TANPA hair-removal dan TANPA resize:
-cache full-frame di BIRNet_Research/outputs/bcn_clahe supaya dataset
+Serupa birnet_eq_bcn_clean_eval.prep namun TANPA hair-removal dan TANPA resize:
+cache full-frame di BIRNet_Research/outputs/bcn_clahe agar dataset
 (birnet_retrain_bcn.py --img_mode clahe) tinggal resize ke 224.
 
 Usage:

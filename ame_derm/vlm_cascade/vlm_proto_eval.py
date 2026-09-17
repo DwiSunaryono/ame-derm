@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prototype-retrieval eval: build kunci-dari-TRAIN + montase test model->vasc utk 1 fold.
+"""Evaluasi prototype-retrieval: susun kunci-dari-TRAIN + montase test model->vasc buat 1 fold.
 build <seed> <dump>  -> _KEY_<seed>.png, _TEST_<seed>.png, _vlm_proto<seed>_key.json
 apply <seed> <dump> <reject_idx> -> reassign + macro
 """

@@ -1,10 +1,10 @@
-"""Persiapan data eksternal ISIC 2019 (BCN20000 + MSK, di luar HAM10000)
--- lever pertama yang GENUINELY berbeda dari semua eksperimen boundary-
-injection sebelumnya: menambah gambar REAL baru (bukan mengedit ulang
+"""Penyiapan data eksternal ISIC 2019 (BCN20000 + MSK, di luar HAM10000)
+-- lever pertama yang GENUINELY berbeda dari seluruh eksperimen boundary-
+injection terdahulu: menambahkan gambar REAL baru (bukan mengedit ulang
 10015 gambar HAM10000 yang sama), khusus utk memperkaya kelas minoritas
 (DF, VASC, AKIEC) dgn keragaman piksel yang genuinely baru.
 
-Verifikasi (dicek langsung dari GroundTruth CSV): seluruh 10015 gambar
+Verifikasi (diperiksa langsung dari GroundTruth CSV): seluruh 10015 gambar
 HAM10000 adalah SUBSET dari 25331 gambar ISIC 2019 (overlap 10015/10015),
 menyisakan 15316 gambar BENAR-BENAR BARU dari BCN20000/MSK. Distribusi
 kelas pada 15316 gambar baru itu: MEL=3409 NV=6170 BCC=2809 AK=737
@@ -20,8 +20,8 @@ lesion di BCN20000). VAL & TEST tetap 100% HAM10000 real, tidak berubah
 sama sekali -- test_f1 dari eksperimen ini tetap bisa dibandingkan
 langsung dgn baseline 0.7859 dan semua eksperimen boundary-injection.
 
-Langkah script ini (CPU-only, aman dijalankan kapan saja termasuk saat
-GPU dipakai training lain):
+Tahapan script ini (CPU-only, aman dijalankan kapan pun, termasuk saat
+GPU sedang dipakai training lain):
   1. Baca GroundTruth+Metadata CSV (harus sudah didownload).
   2. Filter ke 15316 gambar baru, mapping kelas, buang SCC/UNK.
   3. Simpan manifest CSV (image_id, label).
@@ -62,7 +62,7 @@ def build_manifest():
 
     rows = []
     for _, r in new_df.iterrows():
-        # buang SCC (kelas tak ada di taksonomi kita) & UNK
+        # singkirkan SCC (kelas tak ada di taksonomi kita) & UNK
         if r.get("SCC", 0.0) == 1.0 or r.get("UNK", 0.0) == 1.0:
             continue
         for isic_col, our_name in ISIC_TO_OURS.items():
@@ -92,7 +92,7 @@ def extract_needed_images(manifest):
 
     with zipfile.ZipFile(ZIP_PATH) as zf:
         names = zf.namelist()
-        # arsip resmi ISIC2019: folder "ISIC_2019_Training_Input/<id>.jpg"
+        # struktur arsip resmi ISIC2019: folder "ISIC_2019_Training_Input/<id>.jpg"
         name_map = {}
         for n in names:
             base = os.path.basename(n)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Buat CSV per-zona dari rep_fold{F}.csv untuk melatih PanDerm-base experts.
-Output: rep_fold{F}_{zone}.csv (train/val/test difilter ke lokalisasi zona itu)."""
+"""Create per-zone CSVs from rep_fold{F}.csv for training the PanDerm-base experts.
+Output: rep_fold{F}_{zone}.csv (train/val/test filtered to that zone's localization)."""
 import os, argparse, pandas as pd
 
 ZONE_MAP = {

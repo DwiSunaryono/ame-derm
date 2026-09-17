@@ -1,26 +1,26 @@
-"""Audit representativeness of the test partitions (Jalur A, CPU-only).
+"""Check how representative the test partitions are (Jalur A, CPU-only).
 
-For each of the 5 folds of the lesion-grouped, fully-representative protocol
+Across all 5 folds of the lesion-grouped, fully-representative protocol
 (stratified_ham_kfold_fully_representative, stratify_fields=["dataset"]),
-compare the *test* partition's metadata distribution against the full
-dataset's distribution for every metadata attribute of HAM10000:
+the metadata distribution of the *test* partition is contrasted with the
+distribution of the whole dataset, for every HAM10000 metadata attribute:
   - label (class)       -- explicit stratification key (exact by construction)
   - dataset (source)    -- explicit stratification key (exact by construction)
   - sex, localization, age_bucket (quantile-binned age)
        -- NOT explicit stratification keys -> measure the induced shift
 
-Metric per attribute (same logic as compare_val_to_reference in
+Per-attribute metric (identical logic to compare_val_to_reference in
 birnet_representative_val_split.py):
-  mean_abs_diff / max_abs_diff of category proportions (test vs full), and
-  coverage = fraction of the full attribute's value-set that appears in the
-  test fold (guarantee that every metadata value is present in the test).
+  mean_abs_diff / max_abs_diff of the category proportions (test vs full), plus
+  coverage = share of the full attribute's value-set that shows up in the
+  test fold (ensuring no metadata value is absent from the test).
 
-The same statistics are reported for the validation partition, since the
-inner val split uses the identical stratification keys.
+Validation-partition numbers are reported too, because the inner val split
+relies on the same stratification keys.
 
-The reported numbers feed a small table / Fig. 3 panel for the manuscript:
-keeping the headline claim at class x source, and showing that the
-remaining metadata attributes are also mirrored (induced representativeness).
+These numbers back a small table / Fig. 3 panel in the manuscript:
+the headline claim stays at class x source, while the other metadata
+attributes are shown to be mirrored as well (induced representativeness).
 
 Usage (CPU only, no GPU needed):
     .venv/bin/python3 birnet_audit_split_representativeness.py
@@ -44,14 +44,14 @@ FIELDS = ("label", "dataset", "sex", "localization", "age_bucket")
 
 
 def prop_shift(test_dist, full_dist, all_vals):
-    """Mean and max absolute difference of category proportions."""
+    """Average and peak absolute gap between category proportions."""
     diffs = [abs(test_dist.get(v, 0.0) - full_dist.get(v, 0.0)) for v in all_vals]
     return float(np.mean(diffs)), float(np.max(diffs)) if diffs else 0.0
 
 
 def audit_fold(fold_df, full_df):
-    """Return per-attribute distribution shift + coverage of one partition
-    (test or val) against the full dataset."""
+    """Yield the per-attribute distribution shift and coverage for a single
+    partition (test or val) measured against the whole dataset."""
     out = {}
     for f in FIELDS:
         full_dist = full_df[f].value_counts(normalize=True).to_dict()

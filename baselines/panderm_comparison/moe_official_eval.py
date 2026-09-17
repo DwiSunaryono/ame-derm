@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 """
-FASE C — Anatomical MoE (proposed) di PROTOKOL RESMI PanDerm.
-Gabungkan Large-generalist + 3 expert base per-zona (image-only, arsitektur sama),
-routing by localization, blend alpha di-tune di VAL -> terapkan ke TEST.
+FASE C — Anatomical MoE (proposed) under PanDerm's OFFICIAL PROTOCOL.
+Combines the Large generalist + 3 base experts per-zone (image-only, identical
+architecture), routing by localization, with blend alpha tuned on VAL -> applied to TEST.
 
-Ablasi bersih: single DINOv2-Large (gen saja) vs MoE (gen + expert routing).
-Pertanyaan: apakah expert-routing menambah di atas single backbone (0.8253) &
-mengalahkan PanDerm (0.8234) di protokol IDENTIK?
+Clean ablation: single DINOv2-Large (gen only) vs MoE (gen + expert routing).
+Question: does expert routing add on top of the single backbone (0.8253) and
+beat PanDerm (0.8234) under the IDENTICAL protocol?
 
-Butuh checkpoint (dari birnet_dinov2_official_protocol.py):
+Requires checkpoints (from birnet_dinov2_official_protocol.py):
   - Large gen : results_dinov2_official/dinov2_{images}_seed{seed}_best.pth
   - Experts   : results_dinov2_official/model_{zone}_base_{images}_seed{seed}_best.pth
 
-Contoh:
+Example:
   .venv/bin/python birnet_moe_official_eval.py --images full --seed 123
 """
 import argparse, os, json
@@ -75,7 +75,7 @@ def load_model(backbone, ckpt, img_size):
 
 
 def route(exp_probs, gen_probs, df):
-    """Per-sample: pakai expert zona-nya; kalau tak ada zona -> gen (fallback)."""
+    """Per sample: use its zone's expert; when no zone applies -> gen (fallback)."""
     out = []
     for i, loc in enumerate(df["localization"].values):
         z = get_zone(loc)
@@ -105,7 +105,7 @@ def main():
     va_ld = DataLoader(DS(va, img_dir, tf), batch_size=args.batch_size, shuffle=False, num_workers=8, pin_memory=True)
     te_ld = DataLoader(DS(te, img_dir, tf), batch_size=args.batch_size, shuffle=False, num_workers=8, pin_memory=True)
 
-    # paths
+    # file paths
     gen_ckpt = os.path.join(args.ckpt_dir, f"dinov2_{args.images}_seed{args.seed}_best.pth")
     exp_ckpts = {z: os.path.join(args.ckpt_dir, f"model_{z}_base_{args.images}_seed{args.seed}_best.pth")
                  for z in ZONE_MAP}
@@ -126,7 +126,7 @@ def main():
     routed_va, routed_te = route(exp_va, gen_va, va), route(exp_te, gen_te, te)
     y_va, y_te = va["label"].values, te["label"].values
 
-    # sweep alpha di VAL
+    # sweep alpha on VAL
     best_a, best_m = None, -1
     print("\nSWEEP alpha (VAL):")
     a = args.alpha_start
@@ -137,7 +137,7 @@ def main():
         print(f"  a={a:.2f}  val_macro={m:.4f}{flag}")
         a += args.alpha_step
 
-    # terapkan ke TEST
+    # apply on TEST
     merged_te = best_a * routed_te + (1 - best_a) * gen_te
     preds = merged_te.argmax(1)
     moe_macro = f1_score(y_te, preds, average="macro", zero_division=0)

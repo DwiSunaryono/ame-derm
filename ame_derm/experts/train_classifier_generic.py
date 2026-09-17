@@ -1,16 +1,16 @@
-"""Training classifier generik untuk backbone apa pun (via timm), dengan
-protokol IDENTIK dengan yang menghasilkan cls_vit_best.pth/cls_b5_best.pth:
-    - Data   : HAM10000, stratified split 70/15/15 seed=42 (sama persis
-               dengan birnet_final.py, ham_test_df tidak pernah disentuh)
-    - Oversampling: target 1500/kelas di training partition
+"""Generic classifier training for any backbone (through timm), under a
+protocol IDENTICAL to the one that produced cls_vit_best.pth/cls_b5_best.pth:
+    - Data   : HAM10000, stratified 70/15/15 split seed=42 (exactly as in
+               birnet_final.py, ham_test_df is never touched)
+    - Oversampling: target 1500/class in the training partition
     - Loss   : Label Smoothing Focal Loss (gamma=2.0, smoothing=0.1)
     - Optim  : AdamW + CosineAnnealingWarmRestarts (T0=20)
-    - Early stopping patience=12 berdasarkan val balanced accuracy
+    - Early stopping patience=12 based on val balanced accuracy
 
-Dipakai untuk menjawab pertanyaan "kenapa cuma ViT-B16 & EfficientNet-B5"
-secara berbasis-data: latih beberapa kandidat backbone lain dengan cara
-yang sama-sama adil, baru pilih pasangan/ensemble terbaik berdasarkan
-bukti, bukan berdasarkan checkpoint yang kebetulan ada.
+Used to answer "why only ViT-B16 & EfficientNet-B5" in a data-driven way:
+train a few other backbone candidates under equally fair conditions, then
+pick the best pair/ensemble from evidence, not from whichever checkpoints
+happened to exist.
 
 Pemakaian:
     python train_classifier_generic.py --backbone resnet50
@@ -32,21 +32,21 @@ from sklearn.metrics import balanced_accuracy_score, f1_score
 from ame_derm.common import birnet_final as bf
 
 CKPT_DIR = "BIRNet_Research/outputs/checkpoints/candidate_backbones"
-# Semua skrip downstream (fusion_v2/v3_clinical/positive_control, ensemble_*,
-# joint_ncl_finetune, verify_*) memuat checkpoint dari sini dengan nama ini.
+# All downstream scripts (fusion_v2/v3_clinical/positive_control, ensemble_*,
+# joint_ncl_finetune, verify_*) load their checkpoints from here under this name.
 CANONICAL_CKPT_DIR = "BIRNet_Research/outputs/checkpoints/verify_ensemble"
 CANONICAL_NAME = {"vit_base_patch16_224": "cls_vit_best.pth", "efficientnet_b5": "cls_b5_best.pth"}
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 LR = 1e-4
 BATCH_SIZE = 32
-# MAX_EPOCHS & PATIENCE diambil langsung dari cfg.cls_max_epochs/cls_patience
-# di dalam main() -- SAMA PERSIS dengan protokol C5/C6/C7 (80 epoch, patience 12),
-# supaya perbandingan antar backbone benar-benar apple-to-apple.
+# MAX_EPOCHS & PATIENCE are taken straight from cfg.cls_max_epochs/cls_patience
+# inside main() -- EXACTLY as in the C5/C6/C7 protocol (80 epochs, patience 12),
+# so backbone-to-backbone comparison is truly apple-to-apple.
 
 
 class GenericClassifier(nn.Module):
-    """Struktur head identik dengan SkinClassifierB5/ViT di notebook asli,
-    supaya kapasitas head tidak jadi variabel perancu antar backbone."""
+    """Head structure identical to SkinClassifierB5/ViT in the original
+    notebook, so head capacity is not a confounder across backbones."""
 
     def __init__(self, backbone_name: str, num_classes: int = 7,
                  drop_path_rate: float = None, head_dropout: float = 0.3, img_size: int = 224):
@@ -56,23 +56,22 @@ class GenericClassifier(nn.Module):
         backbone_kwargs = {}
         if drop_path_rate is not None:
             backbone_kwargs["drop_path_rate"] = drop_path_rate
-        # DINOv2 dilatih di 518px dgn pos-embed tetap -- utk pakai di resolusi
-        # lain (224 default, atau 384/448 utk buka desain native-res-nya) perlu
-        # interpolasi pos-embed via dynamic_img_size + img_size sesuai crop.
+        # DINOv2 was trained at 518px with fixed pos-embeds -- to use another
+        # resolution (224 default, or 384/448 to exploit its native-res design)
+        # the pos-embeds must be interpolated via dynamic_img_size + img_size per crop.
         if "dinov2" in backbone_name:
             backbone_kwargs["img_size"] = img_size
             backbone_kwargs["dynamic_img_size"] = True
-        # BUG (ditemukan saat retraining pada split terkoreksi): baris ini
-        # sebelumnya menulis global_pool="avg" di KEDUA cabang ternary,
-        # sehingga ViT/Swin/DeiT dipaksa memakai avg-pooling (timm menamai
-        # layer norm akhirnya "fc_norm") padahal SkinClassifierViT (dipakai
-        # verify_standalone_checkpoints.py, birnet_fusion_v2.py, dst.) tidak
-        # mengoper global_pool sama sekali untuk ViT, sehingga timm memakai
-        # CLS-token pooling standar (layer norm akhirnya bernama "norm").
-        # Checkpoint yang dihasilkan sebelum fix ini TIDAK bisa dimuat ke
-        # SkinClassifierViT (state_dict key mismatch: fc_norm vs norm) --
-        # transformer backbone karenanya tidak diberi argumen global_pool
-        # sama sekali di sini, supaya arsitekturnya identik.
+        # BUG (spotted while retraining on the corrected split): this line
+        # used to put global_pool="avg" in BOTH ternary branches, forcing
+        # ViT/Swin/DeiT onto avg-pooling (timm then names the final layer norm
+        # "fc_norm"), whereas SkinClassifierViT (used by
+        # verify_standalone_checkpoints.py, birnet_fusion_v2.py, etc.) passes
+        # no global_pool at all for ViT, so timm applies the standard
+        # CLS-token pooling (final layer norm named "norm"). Checkpoints made
+        # before this fix CANNOT be loaded into SkinClassifierViT (state_dict
+        # key mismatch: fc_norm vs norm) -- transformer backbones therefore
+        # receive no global_pool argument here at all, keeping the architecture identical.
         if is_transformer:
             self.backbone = timm.create_model(backbone_name, pretrained=True, num_classes=0, **backbone_kwargs)
         else:
@@ -128,16 +127,16 @@ def evaluate(model, loader, device):
 
 
 def evaluate_full(model, loader, device):
-    """Like evaluate(), but also reports macro-F1. balanced_accuracy_score
-    is recall-only (average per-class recall) -- it does NOT penalize a
-    model that over-predicts one class at the expense of others' precision
-    (e.g. the pooled-BCN oversampling-imbalance bug: mel's own recall rose
-    while it was absorbing misclassified bcc/akiec/bkl samples, silently
-    degrading mel's precision in a way balanced accuracy alone understates).
-    Macro-F1 (harmonic mean of precision+recall, averaged per class) is
-    sensitive to that precision damage and should be reported alongside
-    balanced accuracy, not as a silent replacement, so historical
-    balanced-accuracy comparisons in this project remain interpretable."""
+    """Like evaluate(), but macro-F1 is reported as well. balanced_accuracy_score
+    covers recall only (mean per-class recall) -- it does NOT punish a model
+    that over-predicts one class while hurting others' precision (e.g. the
+    pooled-BCN oversampling-imbalance bug: mel's own recall climbed as it
+    swallowed misclassified bcc/akiec/bkl samples, quietly eroding mel's
+    precision in a way balanced accuracy by itself understates). Macro-F1
+    (the harmonic mean of precision+recall, averaged per class) reacts to
+    that precision loss and ought to be reported next to balanced accuracy,
+    not swapped in silently, so historical balanced-accuracy comparisons in
+    this project stay interpretable."""
     model.eval()
     preds, labs = [], []
     for imgs, _, labels in loader:
@@ -188,17 +187,18 @@ def main():
     n_params = sum(p.numel() for p in model.parameters())
     print(f"Total parameter: {n_params/1e6:.2f}M")
 
-    # PENTING: TIDAK pakai cls_weight inverse-frequency di sini. Training set
-    # sudah di-oversample rata 1500/kelas -- menambah bobot inverse-frequency
-    # (dihitung dari distribusi SEBELUM oversampling) di atas data yang sudah
-    # seimbang menyebabkan double-correction (over-koreksi ke kelas minoritas,
-    # terbukti dari distribusi prediksi model bias ke MEL/BKL, kurang ke NV).
-    # Notebook asli (cls_vit_best/cls_b5_best, cell 64) memang memakai bobot
-    # SERAGAM (eq_w = torch.ones(NUM_CLASSES)) -- disamakan di sini.
+    # IMPORTANT: cls_weight inverse-frequency is NOT used here. The training
+    # set is already oversampled to a flat 1500/class -- adding inverse-
+    # frequency weights (computed from the distribution BEFORE oversampling)
+    # on top of already-balanced data causes double-correction (over-correcting
+    # toward minority classes, evident from the model's prediction distribution
+    # skewing to MEL/BKL, short on NV). The original notebook
+    # (cls_vit_best/cls_b5_best, cell 64) does use UNIFORM weights
+    # (eq_w = torch.ones(NUM_CLASSES)) -- mirrored here.
     criterion = bf.LabelSmoothingFocalLoss(gamma=2.0, smoothing=0.1, weight=None).to(DEVICE)
-    # Backbone berbasis transformer/attention (ViT, Swin) butuh LR lebih kecil
-    # dari CNN -- sesuai preseden notebook asli: cls_vit pakai lr=5e-5,
-    # cls_b5 (CNN) pakai lr=1e-4. Disamakan di sini per tipe backbone.
+    # Transformer/attention backbones (ViT, Swin) need a smaller LR than CNNs
+    # -- matching the original notebook precedent: cls_vit used lr=5e-5,
+    # cls_b5 (CNN) used lr=1e-4. Mirrored here per backbone type.
     is_transformer = ("vit" in args.backbone or "swin" in args.backbone or "deit" in args.backbone)
     lr = 5e-5 if is_transformer else LR
     print(f"Learning rate dipakai: {lr:.0e} ({'transformer' if is_transformer else 'CNN'})")

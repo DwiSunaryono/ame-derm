@@ -1,8 +1,8 @@
-"""Complete combinatorial map of the Phase 1 ensemble search space, using
-the best-known variant of each distinct architecture family discovered so
-far (not literal duplicates -- e.g. highres-b4 instead of plain b4 since
-highres gave b4 a real +0.0103 gain, but plain mit_b3 instead of its
-highres variant since that gave ~0 gain there):
+"""A complete combinatorial map of the Phase 1 ensemble search space, built
+from the best-known variant of each distinct architecture family found so
+far (these are not literal duplicates -- highres-b4 rather than plain b4,
+for instance, because highres gave b4 a real +0.0103 gain, yet plain
+mit_b3 rather than its highres variant because that yielded ~0 gain there):
 
   - highres-b4      (unetpp+efficientnet-b4 @384->224, seed42): solo test 0.8873
   - b5              (unetpp+efficientnet-b5 @224): solo test 0.8800
@@ -11,17 +11,18 @@ highres variant since that gave ~0 gain there):
   - mit_b3          (segformer+mit_b3 @224): solo test 0.9033
   - convnext        (upernet+tu-convnext_tiny @224): solo test 0.8999
 
-Excluded from this map: mobilenet_v2 (weakest solo, 0.8718, established
-pattern of dragging ensembles down), BGFF/CBAM-refined variants (all
-confirmed WORSE than their own base models, so including them would only
-add correlated-and-worse noise), and the non-superseded plain versions of
-b4/resnet50 (highly correlated duplicates of their own highres variant).
+Left out of this map: mobilenet_v2 (weakest solo, 0.8718, an established
+pattern of dragging ensembles down), the BGFF/CBAM-refined variants (every
+one confirmed WORSE than its own base model, so adding them would only
+introduce correlated-and-worse noise), and the non-superseded plain
+versions of b4/resnet50 (highly correlated duplicates of their highres
+counterparts).
 
-Every model's probability map uses 4-way flip TTA (established to help,
-or at worst be neutral, in every prior test). Tests ALL non-trivial
-combinations (2 to 6 members) both raw (simple mean) and with guided
-filter (r=30) post-processing, to give a complete picture of where the
-true optimum sits -- not just the top pick.
+Each model's probability map relies on 4-way flip TTA (shown to help, or at
+worst stay neutral, in every earlier test). The script examines ALL
+non-trivial combinations (2 to 6 members), both raw (simple mean) and with
+guided filter (r=30) post-processing, so the result shows where the true
+optimum actually lies -- not merely the top pick.
 
 Usage:
     python birnet_seg_full_ensemble_map.py

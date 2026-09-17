@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Diagnosa GEN retrained (wp>crop) di BCN test: per-class PRF,
-confusion matrix raw, dan distribusi confidence (benar vs salah)."""
+"""Analisis GEN hasil retrain (wp>crop) pada BCN test: PRF per-kelas,
+confusion matrix mentah, serta sebaran confidence (benar vs salah)."""
 import os
 import json
 import numpy as np

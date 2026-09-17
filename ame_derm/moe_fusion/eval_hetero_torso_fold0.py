@@ -1,19 +1,19 @@
-"""Heterogeneous MoE — evaluasi SWIN-TORSO swap (fold-0, RAW).
+"""Heterogeneous MoE — uji SWIN-TORSO swap (fold-0, RAW).
 
-Menguji apakah mengganti Pakar Torso DINOv2 -> Pakar Torso SWIN memecah
-"echo chamber" konsili dan menaikkan F1. Melaporkan, di fold-0:
+Diuji apakah pertukaran Pakar Torso DINOv2 -> Pakar Torso SWIN sanggup membongkar
+"echo chamber" konsili sekaligus menaikkan F1. Di fold-0 dilaporkan:
 
   A. ENSEMBLE (Statis 80:20, TTA):
-     - Baseline council (Torso DINOv2)      -> harus reproduksi 0.8235
-     - Hetero  council (Torso SWIN)         -> pemenang?
-  B. DIVERSITY di SUBSET TORSO (menjawab pertanyaan yg selama ini kosong: Q di RAW):
+     - council Baseline (Torso DINOv2)      -> wajib reproduksi 0.8235
+     - council Hetero  (Torso SWIN)         -> jadi pemenang?
+  B. DIVERSITY pada SUBSET TORSO (menjawab pertanyaan yg sekian lama kosong: Q di RAW):
      - F1 zona: DINOv2-Torso vs SWIN-Torso vs Generalist
      - Q-statistic & disagreement: SWIN-Torso vs Generalist, DINOv2-Torso vs Generalist,
        SWIN-Torso vs DINOv2-Torso
-  Kriteria lolos (pre-registered): swap membantu HANYA jika
+  Syarat lolos (pre-registered): swap menolong HANYA bila
      F1(Swin-Torso) >= F1(DINOv2-Torso) di zona torso  DAN  Q(Swin,gen) < Q(DINOv2,gen).
 
-Semua model dievaluasi di crop RAW yg sama (cropped_phase1_final), TTA 6-view.
+Seluruh model diuji pada crop RAW yg sama (cropped_phase1_final), TTA 6-view.
 Fungsi extract_probs/eval_logic diimpor dari birnet_eval_moe_pure_champion (identik).
 
 Usage:  .venv/bin/python3 birnet_eval_hetero_torso_fold0.py
@@ -37,7 +37,7 @@ GEN_DIR = "BIRNet_Research/outputs/checkpoints/phase2_multimodal_ablation"
 EXP_DIR = "BIRNet_Research/outputs/checkpoints/phase2_multimodal"
 FOLD = 0
 
-# key -> (backbone, checkpoint_path)
+# key -> (backbone, path checkpoint)
 SPECS = {
     "gen_pure":   (DINO, f"{GEN_DIR}/cls_{DINO}_multimodal_fold{FOLD}_best.pth"),
     "dino_torso": (DINO, f"{EXP_DIR}/cls_{DINO}_expert_torso_fold{FOLD}_best.pth"),
@@ -64,7 +64,7 @@ def q_statistic(pred_a, pred_b, y):
 
 
 def council_f1(probs, test_df, labels, torso_key):
-    """Statis 80:20: expert relevan per-zona + 20% generalist. torso_key pilih sumber Torso."""
+    """Statis 80:20: pakar relevan per-zona + 20% generalist. torso_key menentukan sumber Torso."""
     gen = probs["gen_pure"]
     preds = []
     for i, row in test_df.iterrows():
@@ -76,7 +76,7 @@ def council_f1(probs, test_df, labels, torso_key):
         elif zone == "head":
             exp = probs["head_v2"][i]
         else:
-            exp = gen[i]  # zona tanpa pakar -> generalist saja
+            exp = gen[i]  # zona tanpa pakar -> cukup generalist
         merged = 0.8 * np.asarray(exp) + 0.2 * np.asarray(gen[i])
         preds.append(int(np.argmax(merged)))
     valid = labels >= 0
@@ -84,13 +84,13 @@ def council_f1(probs, test_df, labels, torso_key):
 
 
 def main():
-    # cek keberadaan checkpoint
+    # pastikan checkpoint tersedia
     missing = [k for k, (_, p) in SPECS.items() if not os.path.exists(p)]
     if missing:
         print(f"Checkpoint belum ada: {missing}\nJalankan run_hetero_swin_torso_fold0.sh dulu.")
         return
 
-    # cek meta_dim semua model harus 15 (council memberi meta 15-dim)
+    # pastikan meta_dim tiap model = 15 (council memasok meta 15-dim)
     dims = {k: meta_dim_of(p) for k, (_, p) in SPECS.items()}
     bad = {k: d for k, d in dims.items() if d != 15}
     if bad:
@@ -114,7 +114,7 @@ def main():
             test_df = ham_df.iloc[tst].reset_index(drop=True)
             break
 
-    # load semua model (backbone campur)
+    # muat seluruh model (backbone campur)
     models = {}
     for key, (bb, path) in SPECS.items():
         m = MultimodalClassifier(bb, num_classes=cfg.num_classes, meta_dim=15, img_size=cfg.img_size).to(DEVICE)

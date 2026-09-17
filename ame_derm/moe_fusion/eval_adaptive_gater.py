@@ -1,21 +1,21 @@
-"""Adaptive Dual-Generalist Gating untuk BirNET Asymmetric MoE.
+"""Adaptive Dual-Generalist Gating buat BirNET Asymmetric MoE.
 
-Masalah yang diselesaikan:
-  - Static alpha (0.65-0.80) berlaku sama untuk SEMUA gambar.
-  - Di Fold 4, DINOv2 Large lemah (f1=0.8096 vs Base 0.8317), menarik ensemble turun.
+Persoalan yg hendak dibereskan:
+  - Alpha statis (0.65-0.80) dipakai seragam buat SEMUA gambar.
+  - Pada Fold 4, DINOv2 Large tampil lemah (f1=0.8096 vs Base 0.8317) sehingga ensemble ikut turun.
 
-Solusi: AdaptiveDualGater — MLP kecil yang belajar dari VAL:
-  "Kapan percaya Large Gen? Kapan percaya Base Gen? Berapa besar Specialist?"
+Jalan keluar: AdaptiveDualGater — sebuah MLP mungil yg belajar dari VAL:
+  "Bilamana mesti memercayai Large Gen? Bilamana Base Gen? Sebesar apa porsi Specialist?"
 
-Arsitektur (per-gambar):
+Arsitektur (dihitung per-gambar):
   Input:  [prob_spec(7) + prob_large(7) + prob_base(7) + meta(15) + abcd(8)] = 44 dim
-  Output: [α_spec, α_large, α_base] via Softmax — secara alami sum-to-1
+  Output: [α_spec, α_large, α_base] lewat Softmax — otomatis sum-to-1
   Merge:  final = α_spec*P_spec + α_large*P_large + α_base*P_base
 
 Training:
-  - Dilatih pada VAL set saja (no leakage ke TEST)
-  - Loss: CrossEntropy terhadap final merged prob
-  - Ensemble 5 gater (seed berbeda) untuk stabilitas
+  - Hanya dilatih di VAL set (tanpa kebocoran ke TEST)
+  - Loss: CrossEntropy atas final merged prob
+  - 5 gater di-ensemble (seed berlainan) demi stabilitas
 
 Usage:
   .venv/bin/python3 birnet_eval_adaptive_gater.py --fold 0
@@ -57,12 +57,12 @@ ABCD_DIM    = 8
 # ─────────────────────────────────────────────────────────────────────────────
 
 class AdaptiveDualGater(nn.Module):
-    """MLP yang memprediksi (α_spec, α_large, α_base) per gambar.
+    """MLP yg menaksir (α_spec, α_large, α_base) untuk tiap gambar.
 
-    Input concatenation:
+    Penggabungan input:
       prob_spec  (7) + prob_large (7) + prob_base (7) + meta (15) + abcd (8) = 44
-    Output:
-      3 weight logits → Softmax → [α_spec, α_large, α_base]
+    Keluaran:
+      3 logit bobot → Softmax → [α_spec, α_large, α_base]
     """
 
     def __init__(self, use_abcd: bool = True):
@@ -78,7 +78,7 @@ class AdaptiveDualGater(nn.Module):
             nn.Linear(64, 32),
             nn.GELU(),
             nn.Dropout(0.2),
-            nn.Linear(32, 3),   # 3 komponen: spec, large, base
+            nn.Linear(32, 3),   # tiga komponen: spec, large, base
         )
 
     def forward(self, p_spec, p_large, p_base, meta, abcd=None):
@@ -127,7 +127,7 @@ def load_model(backbone, ckpt_path, cfg, meta_dim=META_DIM):
 
 
 def build_specialist_probs(probs_dict, df):
-    """Pilih prob spesialis yang sesuai lokalisasi per gambar."""
+    """Ambil prob spesialis yg cocok dgn lokalisasi masing-masing gambar."""
     exp_arr = []
     for i, (_, row) in enumerate(df.iterrows()):
         zone = get_expert_name(row["localization"])
@@ -141,7 +141,7 @@ def build_specialist_probs(probs_dict, df):
 
 
 def load_abcd(df):
-    """Muat fitur ABCD untuk gambar di df; kembalikan array (N, 8) atau None."""
+    """Baca fitur ABCD bagi gambar dlm df; hasilnya array (N, 8) atau None."""
     if not os.path.exists(ABCD_CSV):
         return None
     abcd_df = pd.read_csv(ABCD_CSV, index_col="image_id")
@@ -154,7 +154,7 @@ def load_abcd(df):
         else:
             out.append(np.zeros(ABCD_DIM, dtype=np.float32))
     arr = np.array(out)
-    # Normalise kolom
+    # Normalisasi kolom
     mu  = arr.mean(axis=0) + 1e-8
     std = arr.std(axis=0) + 1e-8
     return (arr - mu) / std
@@ -168,11 +168,11 @@ def train_gater_ensemble(
     p_spec, p_large, p_base, metas, labels,
     abcd=None, n_gaters=5, epochs=200, patience=30
 ):
-    """Train ensemble gater pada VAL set. Kembalikan list of trained gaters."""
+    """Latih ensemble gater di VAL set. Hasilnya list gater yg sudah terlatih."""
     use_abcd = abcd is not None
     gaters   = []
 
-    # Konversi ke tensor
+    # Ubah ke tensor
     T = lambda x: torch.tensor(x, dtype=torch.float32)
     Tp_spec  = T(p_spec);   Tp_large = T(p_large)
     Tp_base  = T(p_base);   Tmeta    = T(metas)
@@ -212,7 +212,7 @@ def train_gater_ensemble(
 
                 opt.zero_grad()
                 weights = gater(ps, pl, pb, mt, ab)  # (B, 3)
-                # Merged probability
+                # Probabilitas gabungan
                 merged = (weights[:,0:1]*ps + weights[:,1:2]*pl + weights[:,2:3]*pb)
                 loss   = F.cross_entropy(torch.log(merged.clamp(1e-8)), lbl)
                 loss.backward()
@@ -238,7 +238,7 @@ def train_gater_ensemble(
 
 def eval_with_gater(p_spec, p_large, p_base, metas, labels,
                     gaters, abcd=None):
-    """Inferensi adaptif menggunakan ensemble gater. Kembalikan Macro-F1."""
+    """Inferensi adaptif dgn memakai ensemble gater. Menghasilkan Macro-F1."""
     use_abcd = (abcd is not None) and (gaters[0].net[0].in_features > 36)
     all_merged = []
 
@@ -251,7 +251,7 @@ def eval_with_gater(p_spec, p_large, p_base, metas, labels,
             ab = torch.tensor(abcd[i], dtype=torch.float32).unsqueeze(0).to(DEVICE) \
                  if (use_abcd and abcd is not None) else None
 
-            # Rata-rata alpha dari semua gater
+            # Rerata alpha dari seluruh gater
             alpha_sum = torch.zeros(1, 3, device=DEVICE)
             for g in gaters:
                 alpha_sum += g(ps, pl, pb, mt, ab)
@@ -321,7 +321,7 @@ def run_fold(fold, cfg, ham_df, use_abcd=True):
     print("Ekstraksi TEST...")
     test_probs, y_test, test_metas = extract_probs(models, test_ld, cfg)
 
-    # Build arrays numpy
+    # Susun array numpy
     vp_base  = np.array(val_probs["gen_base"])
     vp_large = np.array(val_probs["large_gen"])
     vp_spec  = build_specialist_probs(val_probs, val_df)
@@ -349,7 +349,7 @@ def run_fold(fold, cfg, ham_df, use_abcd=True):
         valid  = labels >= 0
         return f1_score(labels[valid], preds[valid], average="macro", zero_division=0)
 
-    # Cari α terbaik untuk Large dari VAL
+    # Cari α terbaik buat Large lewat VAL
     best_alpha, best_val = 0.65, -1.0
     for alpha in np.arange(0.60, 0.96, 0.05):
         m = static_eval(vp_large, vp_spec, y_val, alpha)
@@ -385,7 +385,7 @@ def run_fold(fold, cfg, ham_df, use_abcd=True):
                           labels=list(range(7)), zero_division=0)
         return pc
 
-    # Baseline preds
+    # Prediksi baseline
     preds_base   = np.argmax(0.80*tp_spec + 0.20*tp_base,  axis=1)
     preds_hybrid = np.argmax(best_alpha*tp_spec + (1-best_alpha)*tp_large, axis=1)
 
@@ -405,7 +405,7 @@ def run_fold(fold, cfg, ham_df, use_abcd=True):
     print(f"  Δ Gater vs Champion:      {delta_vs_champ:+.4f}")
     print(f"  Δ Gater vs Static Hybrid: {delta_vs_hybrid:+.4f}")
 
-    # Classification report lengkap
+    # Classification report selengkapnya
     valid = y_test >= 0
     print(f"\nClassification Report — Adaptive Gater (fold={fold}):")
     print(classification_report(y_test[valid], preds_gater[valid],

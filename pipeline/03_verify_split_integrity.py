@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Step 3: audit the split built in step 2 for lesion leakage and metadata
-representativeness (see docs/SYSTEM_DOCUMENTATION.md, "Why grouping by
+"""Step 3: check the split produced in step 2 for lesion leakage and for
+metadata representativeness (see docs/SYSTEM_DOCUMENTATION.md, "Why grouping by
 lesion matters").
 
-Thin wrapper around `python -m ame_derm.data_splits.audit_split_representativeness`;
-all CLI arguments are forwarded. Run `--help` for the full argument list.
+A thin wrapper over `python -m ame_derm.data_splits.audit_split_representativeness`;
+every CLI argument is forwarded. See `--help` for the complete argument list.
 """
 import os
 import runpy

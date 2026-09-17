@@ -1,19 +1,21 @@
-"""Item 4 of the "maximize Phase 1" list (most expensive): retrains
-UnetPlusPlus at 384x384 instead of 224x224 -- more input detail should, in
-principle, let the model capture finer lesion boundary precision.
+"""Item 4 of the "maximize Phase 1" list (the most expensive one): retrain
+UnetPlusPlus at 384x384 rather than 224x224, on the reasoning that richer
+input detail should in principle allow the model to pin down lesion
+boundaries more finely.
 
-Fairness note: since the downstream crop-then-classify pipeline needs
-224x224-compatible masks regardless, this script evaluates Dice TWICE:
-  (a) at native 384x384 (informative on its own, but not directly
-      comparable to the 224x224 foundation's 0.8773 number since resizing
-      changes pixel counts)
-  (b) predictions downsampled to 224x224 and compared against the SAME
-      224x224 ground truth used everywhere else in this project -- this is
-      the fair, apples-to-apples number against the existing foundation.
+Fairness note: because the downstream crop-then-classify pipeline requires
+224x224-compatible masks no matter what, this script computes Dice TWICE:
+  (a) at native 384x384 (informative by itself, yet not directly comparable
+      against the 224x224 foundation's 0.8773 number, since resizing alters
+      pixel counts)
+  (b) predictions downsampled to 224x224 and compared to the SAME 224x224
+      ground truth used everywhere else in this project -- this is the fair,
+      apples-to-apples figure against the existing foundation.
 
-Same encoder (efficientnet-b4), same paper-matched loss, same pooled
-dataset, fully deterministic. Batch size reduced (8 instead of 16) since
-384x384 images use ~3x the memory of 224x224 per sample.
+Encoder (efficientnet-b4), paper-matched loss, and pooled dataset are all
+unchanged, and the run is fully deterministic. Batch size is lowered (8
+rather than 16) because 384x384 images consume roughly 3x the memory of
+224x224 per sample.
 
 Usage:
     python birnet_seg_highres.py --seed 42
@@ -32,7 +34,7 @@ from ame_derm.segmentation.seg_bgff_v2 import PaperMatchedSegLoss
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 TRAIN_SIZE = 384
-EVAL_SIZE = 224  # for fair comparison against the existing foundation
+EVAL_SIZE = 224  # to allow a fair comparison with the existing foundation
 BATCH_SIZE = 8
 MAX_EPOCHS = 60
 PATIENCE = 10
@@ -40,8 +42,8 @@ ENCODER = "efficientnet-b4"
 
 
 class SegDatasetHighRes(Dataset):
-    """Like SegDatasetV2, but ALSO returns the mask resized to EVAL_SIZE
-    (224) alongside the TRAIN_SIZE (384) version, so a single dataset can
+    """Similar to SegDatasetV2, except it ALSO returns the mask resized to
+    EVAL_SIZE (224) next to the TRAIN_SIZE (384) copy, letting one dataset
     serve both the training loop and the fair-comparison evaluation."""
 
     def __init__(self, df, train_size, eval_size):

@@ -1,30 +1,30 @@
-"""Lesion segmentation with a Boundary-Guided Feature Fusion (BGFF) decoder,
-adapted from the boundary-guided skip-connection idea used for hair
-segmentation in a companion paper (Mobile U-Net + BGFF: B = Dilate(y) -
-Erode(y); F_BGFF = M_B(B_F) (x) F). That paper's BGFF computes its boundary
-map from the GROUND-TRUTH mask via morphological dilation/erosion -- valid
-for hair segmentation's own evaluation protocol, but not directly usable
-here at inference time on a NEW lesion image, where no ground-truth mask
-exists yet to dilate/erode.
+"""Lesion segmentation using a Boundary-Guided Feature Fusion (BGFF) decoder,
+derived from the boundary-guided skip-connection concept introduced for
+hair segmentation in a companion paper (Mobile U-Net + BGFF: B = Dilate(y) -
+Erode(y); F_BGFF = M_B(B_F) (x) F). In that paper the BGFF boundary map is
+computed from the GROUND-TRUTH mask by means of morphological
+dilation/erosion. That works for hair segmentation's own evaluation
+setting, but cannot be applied directly at inference time on a NEW lesion
+image, since no ground-truth mask is available there to dilate or erode.
 
-Adaptation used here: instead of a morphological boundary map derived from
-GT, each decoder stage has a small learned "boundary head" that predicts a
-boundary-probability map directly from the fused encoder+decoder features
-at that scale, supervised by an auxiliary loss against the Sobel boundary
-of the real ground-truth mask (downsampled to that stage's resolution,
-train-time only). At inference, the boundary head runs on the image's own
-predicted features -- no ground truth required -- and its output gates
-(multiplicatively emphasizes) the fused feature before it continues through
-the decoder, in the same spirit as the original BGFF but deployable on
-unseen images.
+Adaptation adopted here: rather than deriving a morphological boundary map
+from GT, every decoder stage carries a small learned "boundary head" that
+predicts a boundary-probability map straight from the fused encoder+decoder
+features at that scale. An auxiliary loss supervises it against the Sobel
+boundary of the true ground-truth mask (downsampled to that stage's
+resolution, and applied only during training). During inference the
+boundary head operates on the image's own predicted features -- ground
+truth is not needed -- and the head's output gates (multiplicatively
+emphasizes) the fused feature before it passes onward through the decoder,
+mirroring the original BGFF idea while remaining usable on unseen images.
 
-Trained on the exact same pooled segmentation data (ISIC 2018 Task 1 +
-ISIC 2016 + ISIC 2017 + PH2) and evaluated with the exact same protocol
+Training uses the exact same pooled segmentation data (ISIC 2018 Task 1 +
+ISIC 2016 + ISIC 2017 + PH2) and evaluation follows the exact same protocol
 (ISIC 2018 Task 1 test partition, Dice/IoU) as the existing UnetPlusPlus
-(unetpp_final_best.pth), so the two are directly comparable: does a
-boundary-guided decoder produce a better lesion mask than the current
-plain UNet++, and if so, does that translate into a bigger crop-then-
-classify gain downstream?
+(unetpp_final_best.pth), keeping the two directly comparable: does a
+boundary-guided decoder yield a better lesion mask than the current plain
+UNet++, and if so, does that convert into a larger crop-then-classify gain
+downstream?
 
 Usage:
     python birnet_seg_bgff.py
@@ -52,8 +52,9 @@ CKPT_PATH = "BIRNet_Research/outputs/checkpoints/verify_ensemble/unetpp_bgff_bes
 
 
 class SobelBoundary(nn.Module):
-    """Same Sobel-based boundary extractor as birnet_final.BoundaryLoss,
-    reused here to supervise the learned boundary heads."""
+    """A Sobel-based boundary extractor identical to the one in
+    birnet_final.BoundaryLoss; it is reused to supervise the learned
+    boundary heads."""
 
     def __init__(self):
         super().__init__()
@@ -69,12 +70,13 @@ class SobelBoundary(nn.Module):
 
 
 class BGFFDecoderBlock(nn.Module):
-    """One U-Net decoder stage with a boundary-guided skip connection.
-    encoder skip feature (E) and upsampled decoder feature (D) are fused,
-    a learned boundary head predicts a 1-channel boundary-probability map
-    from the fusion, and that map gates the fusion (1 + M_B) before the
-    usual conv block -- the deployable analogue of BGFF's morphological
-    boundary gating."""
+    """A single U-Net decoder stage equipped with a boundary-guided skip
+    connection. The encoder skip feature (E) and the upsampled decoder
+    feature (D) are combined; a learned boundary head then predicts a
+    1-channel boundary-probability map from that combination, and this map
+    gates the combined features (1 + M_B) ahead of the standard conv block
+    -- the deployable counterpart to BGFF's morphological boundary
+    gating."""
 
     def __init__(self, in_ch, skip_ch, out_ch):
         super().__init__()
@@ -101,19 +103,19 @@ class BGFFDecoderBlock(nn.Module):
 
 
 class UNetBGFF(nn.Module):
-    """EfficientNet-B4 encoder (ImageNet-pretrained, identical to the
-    existing UnetPlusPlus baseline) + a plain U-Net-depth decoder whose
-    skip connections are BGFF-gated, with a boundary-prediction head at
-    every stage for auxiliary supervision."""
+    """An EfficientNet-B4 encoder (ImageNet-pretrained, the same one used by
+    the existing UnetPlusPlus baseline) paired with a plain U-Net-depth
+    decoder whose skip connections are BGFF-gated; a boundary-prediction
+    head sits at each stage for auxiliary supervision."""
 
     def __init__(self, encoder_name="efficientnet-b4"):
         super().__init__()
         self.encoder = smp.encoders.get_encoder(encoder_name, weights="imagenet")
-        ch = self.encoder.out_channels  # e.g. (3, 48, 32, 56, 160, 448) shallow->deep incl. input
+        ch = self.encoder.out_channels  # e.g. (3, 48, 32, 56, 160, 448) ordered shallow->deep, input included
         dec_ch = [256, 128, 64, 32, 16]
         self.blocks = nn.ModuleList()
         in_ch = ch[-1]
-        skip_chs = list(reversed(ch[1:-1]))  # skip connections, deep->shallow, excluding the deepest (bottleneck) and raw input
+        skip_chs = list(reversed(ch[1:-1]))  # skip connections, ordered deep->shallow, leaving out the deepest (bottleneck) and the raw input
         for i, out_ch in enumerate(dec_ch):
             skip_ch = skip_chs[i] if i < len(skip_chs) else 0
             self.blocks.append(BGFFDecoderBlock(in_ch, skip_ch, out_ch))
@@ -121,7 +123,7 @@ class UNetBGFF(nn.Module):
         self.head = nn.Conv2d(dec_ch[-1], 1, 1)
 
     def forward(self, x):
-        feats = self.encoder(x)  # list shallow->deep, feats[0] is the input itself
+        feats = self.encoder(x)  # ordered shallow->deep, where feats[0] is the input itself
         d = feats[-1]
         skips = list(reversed(feats[1:-1]))
         boundary_logits = []

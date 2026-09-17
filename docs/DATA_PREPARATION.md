@@ -1,8 +1,9 @@
 # Data Preparation Guide
 
-No dataset is redistributed in this repository. All sources below are public;
-download them yourself and lay them out as described so the default paths in
-`config.py` and `ame_derm/common/birnet_final.py` resolve without edits.
+This repository redistributes no dataset. Every source listed below is public:
+fetch it yourself and arrange it in the layout described here, so that the
+default paths in `config.py` and `ame_derm/common/birnet_final.py` resolve
+without any editing.
 
 ## Sources
 
@@ -20,9 +21,9 @@ download them yourself and lay them out as described so the default paths in
 
 ## Directory layout expected by `ame_derm/common/birnet_final.py::DatasetPaths`
 
-Everything below is rooted at `<base_dir>/dataset` where `base_dir` defaults to
-`./BIRNet_Research` (override with `--base_dir` on any script that builds a
-`Config`):
+The whole tree below hangs off `<base_dir>/dataset`, where `base_dir` is
+`./BIRNet_Research` by default (any script that constructs a `Config` accepts
+`--base_dir` to change it):
 
 ```text
 BIRNet_Research/dataset/
@@ -55,14 +56,14 @@ BIRNet_Research/dataset/
         `-- PH2_dataset.txt
 ```
 
-Phase-1 segmentation output (lesion crops consumed by every classifier script)
-is written to and read from `CROP_DIR` (`config.py`, default
-`BIRNet_Research/outputs/cropped_phase1_final`) via
+The Phase-1 segmentation output — the lesion crops that every classifier
+script reads — goes to, and is read back from, `CROP_DIR` (`config.py`,
+default `BIRNet_Research/outputs/cropped_phase1_final`) through
 `ame_derm/segmentation/generate_phase1_crops.py`.
 
 ## External-validation cohort layout
 
-Used by `ame_derm/external_validation/*` and referenced by `config.py`
+Consumed by `ame_derm/external_validation/*` and referenced from `config.py`
 (`BCN_CSV`, `BCN_IMG`):
 
 ```text
@@ -78,20 +79,20 @@ panderm_datasets/
     `-- images/
 ```
 
-ISIC 2019 external rare-class pooling additionally expects:
+Additionally, ISIC 2019 external rare-class pooling expects:
 
 ```text
 BIRNet_Research/external_data/isic2019/
 ```
-(see `ame_derm/external_validation/prepare_isic2019_external.py` for the
-exact ground-truth CSV / image-folder names from the official ISIC 2019
-archive layout).
+(the exact ground-truth CSV and image-folder names from the official ISIC 2019
+archive layout are listed in
+`ame_derm/external_validation/prepare_isic2019_external.py`).
 
 ## Overriding paths
 
-Rather than editing source files, copy `.env.example` to `.env` and set
-`CROP_DIR`, `BCN_CSV`, `BCN_IMG`, and/or `AME_DERM_ROOT` — `config.py` loads
-`.env` automatically (via `python-dotenv`) and every module that needs these
+Instead of modifying source files, duplicate `.env.example` as `.env` and set
+`CROP_DIR`, `BCN_CSV`, `BCN_IMG`, and/or `AME_DERM_ROOT` — `config.py` reads
+`.env` on its own (through `python-dotenv`), and every module needing these
 paths imports them from `config.py`.
 
 ## Building Phase-1 crops
@@ -101,9 +102,10 @@ python -m ame_derm.segmentation.generate_phase1_crops
 # equivalently: python pipeline/01_build_segmentation_crops.py
 ```
 
-This runs the locked segmentation ensemble
-(`ame_derm/segmentation/seg_phase1_final.py`) over HAM10000 and writes crops
-to `CROP_DIR`, which every classifier/expert/MoE script downstream expects.
+The locked segmentation ensemble
+(`ame_derm/segmentation/seg_phase1_final.py`) is run over HAM10000 by this
+step, and crops are written to `CROP_DIR`, the location every downstream
+classifier/expert/MoE script expects.
 
 ## Building the lesion-grouped split
 
@@ -112,7 +114,7 @@ python -m ame_derm.data_splits.export_representative_folds       # pipeline/02_b
 python -m ame_derm.data_splits.audit_split_representativeness    # pipeline/03_verify_split_integrity.py
 ```
 
-The first exports the 5-fold, lesion-grouped, metadata-stratified split used
-throughout the paper; the second verifies zero lesion leakage and balanced
-metadata coverage across folds (see `docs/SYSTEM_DOCUMENTATION.md` for why
-this matters).
+The first command exports the 5-fold, lesion-grouped, metadata-stratified
+split used across the entire paper; the second confirms that no lesion leaks
+and that metadata coverage stays balanced across folds (the rationale is
+explained in `docs/SYSTEM_DOCUMENTATION.md`).

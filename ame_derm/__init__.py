@@ -1,1 +1,1 @@
-"""AME-Derm pipeline package."""
+"""Package for the AME-Derm pipeline."""

@@ -1,18 +1,18 @@
 """Validasi 5-FOLD "Sang Juara Sejati" (Anatomical MoE Statis 80:20).
 
-Mengevaluasi, untuk tiap fold 0-4, konfigurasi yang di fold-0 mencetak F1=0.8235:
+Buat tiap fold 0-4, diuji konfigurasi yg pada fold-0 berhasil mencetak F1=0.8235:
     Jenderal MURNI (gen_pure) + Torso v1 + Limb v1 + Head v2 (sintetis), Statis 80:20, TTA.
 
-Untuk konteks, tiap fold juga melaporkan:
+Sebagai pembanding, tiap fold turut melaporkan:
     - Generalist-only (gen_pure)         -> baseline pembanding yg JUJUR (single terbaik)
-    - All-Pure Statis 80:20 (Head v1)    -> uji apakah "Head butuh sintetis" bertahan 5-fold
+    - All-Pure Statis 80:20 (Head v1)    -> menguji apakah "Head butuh sintetis" tetap berlaku 5-fold
     - Head-v2 Statis 80:20               -> SANG JUARA
-    - (opsional --with_router) versi Smart Router untuk uji klaim "router overfit"
+    - (opsional --with_router) versi Smart Router guna menguji klaim "router overfit"
 
 Fungsi inti (extract_probs, eval_logic, build_exp_arrays, train_router_ensemble)
-diimpor LANGSUNG dari birnet_eval_moe_pure_champion agar identik dgn run fold-0.
+diimpor LANGSUNG dari birnet_eval_moe_pure_champion supaya identik dgn run fold-0.
 
-Fold yg checkpoint-nya belum lengkap otomatis di-skip (bisa dijalankan bertahap).
+Fold yg checkpoint-nya belum lengkap akan di-skip otomatis (boleh dijalankan bertahap).
 
 Usage:
     .venv/bin/python3 birnet_eval_moe_champion_5fold.py                # statis saja (cepat)
@@ -69,7 +69,7 @@ def eval_fold(bb, fold, cfg, ham_meta, ham_df, val_aug, with_router):
         print(f"[FOLD {fold}] SKIP — checkpoint belum ada: {missing}")
         return None
 
-    # split identik dgn semua skrip lain
+    # split yg sama persis dgn skrip lain
     val_df = test_df = None
     for _, fi, _, val_idx, tst_idx in stratified_ham_kfold_fully_representative(
             ham_meta, cfg, ["dataset"], n_splits=5, n_repeats=1):
@@ -91,7 +91,7 @@ def eval_fold(bb, fold, cfg, ham_meta, ham_df, val_aug, with_router):
         "gen_only_bal": float(balanced_accuracy_score(lbl, gen_pred)),
     }
 
-    # Statis 80:20 untuk dua kombinasi
+    # Statis 80:20 bagi dua kombinasi
     exp_pure = build_exp_arrays(test_tta, test_df, head_ver="head_v1")
     exp_champ = build_exp_arrays(test_tta, test_df, head_ver="head_v2")
     row["allpure_static_f1"] = float(eval_logic(test_gen, exp_pure, test_metas, test_labels, routers=None))

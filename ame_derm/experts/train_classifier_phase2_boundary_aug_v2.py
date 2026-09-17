@@ -1,16 +1,16 @@
-"""Round 2 of the boundary-injection strategy: retrain with the
+"""Round 2 of the boundary-injection strategy: retrain using the
 GENERALIZED, QPSO-optimized synthetic set (953 accepted samples, ALL 7
 classes, BOTH "confident wrong" and "unconfident correct" categories) --
-unlike round 1 (train_classifier_phase2_boundary_aug.py), which only
-pushed MEL samples away from NV and, per the ledger (round 1 entry),
-caused NV->MEL confusion to WORSEN (+24) as an uncontrolled side effect
-because the other direction was never reinforced. This round adds
-synthetic samples for BOTH directions of every confused pair simultaneously
-(e.g. NV-true-confused-as-MEL samples are also pushed toward genuine NV),
-which should control the two-sided trade-off the ledger flagged.
+in contrast to round 1 (train_classifier_phase2_boundary_aug.py), which
+merely pushed MEL samples away from NV and, as recorded in the ledger
+(round 1 entry), made NV->MEL confusion WORSE (+24) as an uncontrolled
+side effect, since the opposite direction was never reinforced. This round
+adds synthetic samples for BOTH directions of every confused pair at once
+(for instance, NV-true-confused-as-MEL samples are pushed toward genuine NV
+too), which ought to keep in check the two-sided trade-off the ledger flagged.
 
-Same leakage safeguard as round 1: a synthetic image is added to a given
-main fold's TRAINING data only if its source image is in THAT fold's own
+The leakage safeguard matches round 1: a synthetic image enters a given
+main fold's TRAINING data only when its source image lies in THAT fold's own
 train_df (never its val_df or test_df).
 
 Usage:

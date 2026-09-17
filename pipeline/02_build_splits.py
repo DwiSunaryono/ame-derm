@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Step 2: build the lesion-grouped, metadata-stratified 5-fold split and
-export its fold CSVs.
+"""Step 2: construct the lesion-grouped, metadata-stratified 5-fold split and
+export the CSVs for its folds.
 
-Thin wrapper around `python -m ame_derm.data_splits.export_representative_folds`;
-all CLI arguments are forwarded. Run `--help` for the full argument list.
+A thin wrapper over `python -m ame_derm.data_splits.export_representative_folds`;
+every CLI argument is forwarded. See `--help` for the complete argument list.
 """
 import os
 import runpy

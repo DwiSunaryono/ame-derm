@@ -1,22 +1,23 @@
-"""Pre-computes lesion crops for ALL HAM10000 images using the FINALIZED
-Phase 1 segmentation pipeline (birnet_seg_phase1_final.py: mit_b3+ConvNeXt+
-hr_resnet50 ensemble, TTA, guided filter, threshold=0.46, LCC filter --
-dice=0.9099), instead of predicting masks on-the-fly per-image during
-classifier training as every earlier crop-experiment script did.
+"""Generates lesion crops ahead of time for every HAM10000 image by running
+the FINALIZED Phase 1 segmentation pipeline (birnet_seg_phase1_final.py:
+mit_b3+ConvNeXt+hr_resnet50 ensemble, TTA, guided filter, threshold=0.46,
+LCC filter -- dice=0.9099). Earlier crop-experiment scripts instead inferred
+masks per image on the fly while the classifier trained.
 
-Why pre-compute instead of on-the-fly: the old scripts' mask_source=unetpp*
-options ran a SINGLE lightweight B4 forward pass per image per epoch --
-cheap enough to do live. The new Phase 1 pipeline is a 3-model x 4-way-TTA
-ensemble + guided filter (CPU) + LCC -- doing that per-image per-epoch
-across 5 GroupKFold folds x multiple epochs would be prohibitively slow.
-Running it ONCE for all 10015 images and caching the resulting crops to
-disk is the only practical approach.
+Reason for pre-computing rather than doing it live: the legacy scripts'
+mask_source=unetpp* choices performed just a SINGLE lightweight B4 forward
+pass for each image each epoch -- cheap enough to run during training. The
+Phase 1 pipeline, by contrast, combines 3 models with 4-way TTA plus a CPU
+guided filter and LCC; running that for every image every epoch over 5
+GroupKFold folds and many epochs would cost far too much time. Executing it
+ONCE across all 10015 images and writing the crops to disk is therefore the
+only workable option.
 
-Output: cropped (but not yet resized/CLAHE'd -- that stays in the
-classifier's own preprocessing so augmentation still operates on a
-consistent, simple format) RGB images saved as .jpg, one per HAM10000
-image_id, mirroring the mask bounding box + pad_frac=0.15 convention used
-by every prior crop experiment in this project.
+Output: RGB images saved as .jpg, cropped but not yet resized/CLAHE'd (those
+steps stay in the classifier's own preprocessing, keeping augmentation on a
+consistent, simple format), one file per HAM10000 image_id, following the
+mask bounding box + pad_frac=0.15 convention shared by all prior crop
+experiments in this project.
 
 Usage:
     python birnet_generate_phase1_crops.py
@@ -38,9 +39,10 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 class RawImageDataset(Dataset):
-    """Loads raw HAM10000 images, producing both 224 and 384 normalized
-    tensors (for the Phase1 pipeline's two input resolutions) plus the
-    original full-resolution image (for cropping) and its native size."""
+    """Reads raw HAM10000 images and yields normalized 224 and 384 tensors
+    (covering the Phase1 pipeline's two input resolutions), together with
+    the untouched full-resolution image (used for cropping) and its native
+    dimensions."""
 
     def __init__(self, df):
         self.entries = list(zip(df["image_id"], df["img_path"]))
@@ -64,8 +66,9 @@ class RawImageDataset(Dataset):
 
 
 def crop_to_bbox(img, mask_224, pad_frac=PAD_FRAC):
-    """mask_224: (224,224) binary float32. Upsamples to img's native size
-    before computing the bounding box, then crops the ORIGINAL image."""
+    """mask_224: (224,224) binary float32. The mask is upsampled to img's
+    native size to derive the bounding box, after which the ORIGINAL image
+    gets cropped."""
     h, w = img.shape[:2]
     mask_native = cv2.resize((mask_224 * 255).astype(np.uint8), (w, h), interpolation=cv2.INTER_NEAREST)
     ys, xs = np.where(mask_native > 127)

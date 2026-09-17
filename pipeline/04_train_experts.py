@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Step 4: train the DINOv2 generalist and/or an anatomical-zone expert
-(torso/limb/head). Run once per zone (and per fold, for the full 5-fold
-protocol) with the appropriate CLI arguments.
+"""Step 4: train either the DINOv2 generalist, an anatomical-zone expert
+(torso/limb/head), or both. Invoke once per zone (and per fold, for the full
+5-fold protocol) with the matching CLI arguments.
 
-Thin wrapper around `python -m ame_derm.experts.train_specialist_expert`;
-all CLI arguments are forwarded. Run `--help` for the full argument list.
+A thin wrapper over `python -m ame_derm.experts.train_specialist_expert`;
+every CLI argument is forwarded. See `--help` for the complete argument list.
 """
 import os
 import runpy

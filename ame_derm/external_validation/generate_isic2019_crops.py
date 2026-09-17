@@ -1,17 +1,17 @@
-"""Generate Phase1 crops utk 14885 gambar eksternal ISIC2019 (BCN20000/MSK,
+"""Buat crop Phase1 untuk 14885 citra eksternal ISIC2019 (BCN20000/MSK,
 bukan HAM10000) -- pola IDENTIK dgn birnet_generate_phase1_crops.py
-(mit_b3+ConvNeXt+hr_resnet50 ensemble, dice=0.9099), ditulis LANGSUNG ke
+(mit_b3+ConvNeXt+hr_resnet50 ensemble, dice=0.9099), disimpan LANGSUNG ke
 CROP_DIR yang SAMA dgn gambar HAM10000 (BIRNet_Research/outputs/
-cropped_phase1_final/) -- image_id ISIC2019 dijamin tidak bentrok dgn
-image_id HAM10000 (sudah diverifikasi disjoint di
-birnet_prepare_isic2019_external.py), jadi SkinLesionDatasetPrecomputedCrop
-bisa langsung memakainya tanpa modifikasi kode apapun.
+cropped_phase1_final/) -- image_id ISIC2019 dijamin tidak bertabrakan dgn
+image_id HAM10000 (telah diverifikasi disjoint di
+birnet_prepare_isic2019_external.py), sehingga SkinLesionDatasetPrecomputedCrop
+dapat langsung memakainya tanpa perlu mengubah kode apa pun.
 
 Prasyarat: birnet_prepare_isic2019_external.py sudah dijalankan (manifest +
 raw images sudah diekstrak ke BIRNet_Research/external_data/isic2019/raw_new/).
 
-GPU-heavy (Phase1 inference) -- JANGAN jalankan bersamaan dgn training Swin
-lain manapun.
+GPU-heavy (Phase1 inference) -- JANGAN dijalankan berbarengan dgn training Swin
+mana pun.
 
 Usage:
     python birnet_generate_isic2019_crops.py

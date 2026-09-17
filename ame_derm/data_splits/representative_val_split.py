@@ -1,25 +1,26 @@
 """
-Split TRAIN-VAL yang VAL-nya representatif thd metadata (bukan cuma
-kelas) -- ide user: kalau VAL dibuat statistically dekat dgn TEST (across
-kelas DAN metadata: usia/sex/lokasi/sumber-dataset), lalu DIKUNCI (tidak
-pernah diubah selama training adaptif), maka menaikkan VAL akan lebih
-genuinely menaikkan TEST -- krn VAL bukan sekadar sampel acak yg
-kebetulan mewakili, tapi sengaja dikonstruksi mewakili.
+A TRAIN-VAL split whose VAL mirrors the metadata (not only the class) --
+user idea: if VAL is made statistically close to TEST (over class AND
+metadata: age/sex/location/source-dataset) and then LOCKED (never altered
+during adaptive training), raising VAL will more genuinely raise TEST --
+because VAL is not just a random sample that happens to represent, but is
+deliberately constructed to represent.
 
-BEDA dari bf.stratified_ham_kfold: split OUTER (mana yg jadi TEST) TETAP
-IDENTIK (stratifikasi cuma pakai label, SAMA PERSIS spt sebelumnya) --
-supaya TEST fold manapun TIDAK BERUBAH sama sekali (semua 20+ angka
-historis di percobaan.md tetap bisa dibandingkan apple-to-apple). Yang
-BERUBAH cuma split INNER (train vs val dari 80% pool): stratifikasi
-sekarang pakai KOMBINASI (label + field metadata terpilih, default
-'dataset' -- field dgn korelasi ketidakseimbangan terkuat & terbanyak dari
-diagnosis Fase 8), bukan cuma label sendirian.
+DIFFERENT from bf.stratified_ham_kfold: the OUTER split (which samples
+become TEST) stays IDENTICAL (stratification still uses only the label,
+EXACTLY as before) -- so no TEST fold changes at all (the 20+ historical
+figures in percobaan.md remain comparable apple-to-apple). What CHANGES is
+only the INNER split (train vs val out of the 80% pool): stratification now
+uses a COMBINATION (label + chosen metadata fields, default 'dataset' -- the
+field with the strongest and most numerous imbalance correlations from the
+Phase 8 diagnosis), instead of the label alone.
 
-Konsistensi per-lesion: usia/sex/lokasi/dataset sudah diverifikasi HAMPIR
-SELALU konsisten dalam 1 lesion_id yg sama (0-9 dari 7470 lesion py variasi
-kecil, diabaikan) -- jadi aman dipakai sbg kunci stratifikasi per-lesion.
+Per-lesion consistency: age/sex/location/dataset were verified to be ALMOST
+ALWAYS consistent within one lesion_id (0-9 out of 7470 lesions show small
+variation, ignored) -- so they are safe to use as per-lesion stratification
+keys.
 
-Usage (dipanggil dari script lain, bukan CLI):
+Usage (called from other scripts, not a CLI):
     from ame_derm.data_splits.representative_val_split import stratified_ham_kfold_representative_val
     for fold_i, train_idx, val_idx, test_idx in stratified_ham_kfold_representative_val(
             ham_df, cfg, val_stratify_fields=["dataset"]):
@@ -40,8 +41,8 @@ def stratified_ham_kfold_representative_val(df, cfg, val_stratify_fields=("datas
         combined_key = combined_key + "_" + df[f].astype(str)
     combined_codes = pd.factorize(combined_key)[0]
 
-    # Outer split (penentu TEST) TETAP pakai label SAJA -- identik dgn
-    # bf.stratified_ham_kfold, supaya TEST fold manapun tidak berubah.
+    # Outer split (the one that fixes TEST) still uses ONLY the label --
+    # identical to bf.stratified_ham_kfold, so no TEST fold ever changes.
     sgkf = StratifiedGroupKFold(n_splits=n_splits, shuffle=True, random_state=cfg.seed)
     for fold_i, (train_val_idx, test_idx) in enumerate(sgkf.split(idx, labels, groups)):
         sub_groups = groups[train_val_idx]
@@ -59,26 +60,26 @@ def stratified_ham_kfold_representative_val(df, cfg, val_stratify_fields=("datas
 
 
 def stratified_ham_kfold_fully_representative(df, cfg, stratify_fields=("dataset",), n_splits=5, n_repeats=1, seed_offset=0):
-    """FONDASI EVALUASI BARU (beda dari stratified_ham_kfold_representative_val
-    di atas): outer split (penentu TEST) DAN inner split (penentu VAL)
-    SAMA-SAMA distratifikasi label+stratify_fields -- TEST & VAL jadi
-    genuinely representatif & mirip satu sama lain, bukan cuma VAL
-    "dipaksa" representatif sementara TEST asal.
+    """NEW EVALUATION FOUNDATION (different from stratified_ham_kfold_representative_val
+    above): both the outer split (which fixes TEST) AND the inner split
+    (which fixes VAL) are stratified on label+stratify_fields -- so TEST &
+    VAL both become genuinely representative and resemble each other, rather
+    than only VAL being "forced" representative while TEST is arbitrary.
 
-    INI MENGUBAH IDENTITAS TEST (beda gambar dari bf.stratified_ham_kfold
-    ataupun stratified_ham_kfold_representative_val) -- SENGAJA, sesuai
-    keputusan eksplisit user stlh temuan VAL bisa berayun 0.78->0.95 murni
-    dari sampling-variance lesi individual (bukan ketidakseimbangan
-    metadata) -- percobaan.md (TEST lama) jadi arsip Fase 1-8, evaluasi
-    baru & seterusnya pakai fondasi split ini, dicatat terpisah.
+    THIS ALTERS TEST IDENTITY (different images from bf.stratified_ham_kfold
+    or stratified_ham_kfold_representative_val) -- DELIBERATELY, following an
+    explicit user decision after finding VAL could swing 0.78->0.95 purely
+    from individual-lesion sampling variance (not metadata imbalance) --
+    percobaan.md (the old TEST) becomes the Phase 1-8 archive, while the new
+    evaluation onward uses this split foundation, tracked separately.
 
-    n_repeats>1: gaya RepeatedStratifiedGroupKFold -- ulangi SELURUH proses
-    split dgn random_state berbeda tiap repeat (seed=cfg.seed+seed_offset+
-    repeat_i), utk meredam variance dari KEBETULAN pengelompokan lesi (baru
-    terbukti jadi sumber varians dominan, lebih besar dari ketidak-
-    seimbangan metadata semata). Default n_repeats=1 (hemat, spt sblmnya)
-    -- naikkan HANYA kalau butuh estimasi lebih stabil (biaya training
-    berkali lipat, n_repeats x n_splits total run).
+    n_repeats>1: RepeatedStratifiedGroupKFold style -- repeat the WHOLE split
+    process with a different random_state per repeat (seed=cfg.seed+
+    seed_offset+repeat_i), to damp variance from the CHANCE grouping of
+    lesions (newly shown to be the dominant variance source, larger than
+    metadata imbalance alone). Default n_repeats=1 (cheap, as before) --
+    raise it ONLY when a more stable estimate is needed (training cost
+    multiplies by n_repeats x n_splits total runs).
 
     Yields: (repeat_i, fold_i, train_idx, val_idx, test_idx)
     """
@@ -109,10 +110,10 @@ def stratified_ham_kfold_fully_representative(df, cfg, stratify_fields=("dataset
 
 
 def compare_val_to_reference(val_df, reference_df, fields, label_col="label"):
-    """Cek statistik: seberapa dekat distribusi VAL ke distribusi acuan
-    (biasanya TEST atau pool) di kelas + tiap field metadata. Return dict
-    berisi jarak (mean abs diff proporsi) per field -- makin kecil makin
-    representatif."""
+    """Check statistics: how close the VAL distribution comes to the
+    reference distribution (usually TEST or the pool) over the class and
+    each metadata field. Returns a dict holding the distance (mean abs diff
+    of proportions) per field -- smaller means more representative."""
     results = {}
     for f in [label_col] + list(fields):
         val_dist = val_df[f].value_counts(normalize=True)

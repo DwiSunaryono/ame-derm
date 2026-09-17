@@ -1,11 +1,11 @@
-"""Multimodal Fusion Classifier: Image + Patient Metadata (age/sex/localization/dataset).
+"""Multimodal Fusion Classifier: Citra + Metadata Pasien (age/sex/localization/dataset).
 
-MOTIVASI: Fase 8 membuktikan bahwa metadata pasien berkorelasi SANGAT KUAT dengan
-error model (MEL×age r=-0.814, NV×localization r=-0.580), tapi selama ini metadata
-hanya dipakai untuk DIAGNOSIS/TARGETING augmentasi — model sendiri BUTA terhadap
-metadata saat prediksi. Skrip ini memberi model "mata" untuk melihat metadata pasien
-via cross-attention fusion, sehingga model bisa LANGSUNG memanfaatkan informasi
-yang sudah terbukti diskriminatif.
+MOTIVASI: Fase 8 membuktikan metadata pasien berkorelasi SANGAT KUAT dengan
+error model (MEL×age r=-0.814, NV×localization r=-0.580), namun selama ini
+metadata cuma dipakai untuk DIAGNOSIS/TARGETING augmentasi — model sendiri
+BUTA terhadap metadata saat prediksi. Skrip ini memberi model "mata" untuk
+melihat metadata pasien lewat cross-attention fusion, sehingga model dapat
+LANGSUNG memanfaatkan informasi yang sudah terbukti diskriminatif.
 
 ARSITEKTUR:
   - Backbone: Swin-base (sama persis dengan baseline champion)
@@ -16,9 +16,9 @@ ARSITEKTUR:
 
 TRAINING: resep IDENTIK dengan baseline (MixUp/CutMix + inverse-freq weights +
 discriminative LR + warmup + CosineAnnealing + early stop by val_f1) supaya
-efek fusion bisa diatribusikan MURNI ke penambahan metadata, bukan resep training.
+efek fusion dapat diatribusikan MURNI ke penambahan metadata, bukan resep training.
 
-PERBEDAAN dari percobaan fusion Fase 2.3 yang GAGAL (F1=0.7155):
+BEDA dari percobaan fusion Fase 2.3 yang GAGAL (F1=0.7155):
   1. Arsitektur fusion: cross-attention (bukan naive MLP concat)
   2. Backbone: Swin-base champion (bukan backbone lama)
   3. MixUp aktif (lever terbesar, +4.4pp terbukti)
@@ -55,7 +55,7 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 # ── Encoding metadata ──────────────────────────────────────────────────
 
-# Urutan TETAP (jangan ubah setelah training dimulai — encoded position matters)
+# Urutan TETAP (jangan diubah setelah training dimulai — encoded position matters)
 SEX_CATEGORIES = ["male", "female", "unknown"]
 LOCALIZATION_CATEGORIES = [
     "scalp", "ear", "face", "back", "trunk", "chest",
@@ -64,11 +64,11 @@ LOCALIZATION_CATEGORIES = [
 ]
 DATASET_CATEGORIES = ["vidir_modern", "rosendahl", "vienna_dias", "vidir_molemax"]
 
-# age: normalized 0-1 (range 0-85 di HAM10000)
+# age: dinormalisasi 0-1 (rentang 0-85 di HAM10000)
 AGE_MAX = 85.0
 
-# Global state for ablation
-# --- CONFIGURATION (Dapat di-override via monkey-patching) ---
+# Global state untuk ablasi
+# --- CONFIGURATION (Bisa di-override lewat monkey-patching) ---
 ACTIVE_META_FIELDS = []
 META_DIM = 23
 ACCUMULATE_STEPS = 1
@@ -89,7 +89,7 @@ def set_active_meta_fields(fields_str):
     return META_DIM
 
 def encode_metadata(age, sex, localization, dataset):
-    """Encode satu baris metadata jadi tensor 1D (META_DIM,) sesuai ACTIVE_META_FIELDS."""
+    """Encode satu baris metadata menjadi tensor 1D (META_DIM,) mengikuti ACTIVE_META_FIELDS."""
     vec = np.zeros(META_DIM, dtype=np.float32)
     offset = 0
     if "age" in ACTIVE_META_FIELDS:
@@ -111,13 +111,13 @@ def encode_metadata(age, sex, localization, dataset):
 # ── Dataset ─────────────────────────────────────────────────────────────
 
 class SkinLesionDatasetMultimodal(Dataset):
-    """Sama dengan SkinLesionDatasetPrecomputedCrop, DITAMBAH metadata tensor."""
+    """Sama seperti SkinLesionDatasetPrecomputedCrop, DITAMBAH tensor metadata."""
 
     def __init__(self, df, img_size, transform=None, oversample=False,
                  target_per_class=None, num_classes=7):
         self.img_size = img_size
         self.transform = transform
-        # Simpan metadata per image_id
+        # Simpan metadata untuk tiap image_id
         self.meta_map = {}
         for row in df.itertuples():
             self.meta_map[row.image_id] = encode_metadata(
@@ -168,8 +168,8 @@ class SkinLesionDatasetMultimodal(Dataset):
         else:
             img_t = torch.from_numpy(img_np.transpose(2, 0, 1)).float() / 255.0
 
-        # Metadata — sintetis (image_id mengandung "synth") pakai metadata sumber aslinya
-        # Jika tidak ada di meta_map (sintetis tanpa metadata), pakai vektor default
+        # Metadata — sintetis (image_id memuat "synth") memakai metadata sumber aslinya
+        # Bila tidak ada di meta_map (sintetis tanpa metadata), pakai vektor default
         base_id = image_id.split("_synth")[0] if "_synth" in image_id else image_id
         meta_vec = self.meta_map.get(image_id, self.meta_map.get(base_id, np.zeros(META_DIM, dtype=np.float32)))
         meta_t = torch.from_numpy(meta_vec)
@@ -180,15 +180,15 @@ class SkinLesionDatasetMultimodal(Dataset):
 # ── Model ───────────────────────────────────────────────────────────────
 
 class CrossAttentionFusion(nn.Module):
-    """Metadata context attends to image features via multi-head cross-attention.
+    """Metadata context melakukan attend ke image features via multi-head cross-attention.
     
-    Query = metadata embedding (projected ke img_dim)
-    Key/Value = image features sequence (patch tokens)
+    Query = embedding metadata (diproyeksikan ke img_dim)
+    Key/Value = sekuens image features (patch token)
     
     Ini BEDA dari naive concat/MLP:
-    cross-attention memungkinkan model SELEKTIF memilih informasi visual (patch spasial)
-    mana yang relevan dengan usia/kelamin pasien. Softmax bekerja dengan benar karena
-    ia menimbang ratusan patch gambar, bukan 1 vektor.
+    cross-attention memungkinkan model memilih secara SELEKTIF informasi visual
+    (patch spasial) mana yang relevan dengan usia/kelamin pasien. Softmax bekerja
+    dengan tepat sebab ia menimbang ratusan patch gambar, bukan satu vektor.
     """
 
     def __init__(self, img_dim, meta_dim=64, num_heads=4, dropout=0.1):
@@ -202,29 +202,29 @@ class CrossAttentionFusion(nn.Module):
 
     def forward(self, img_seq, meta_feat):
         """
-        img_seq: (B, seq_len, img_dim) — unpooled image features
-        meta_feat: (B, meta_dim) — metadata embedding
-        Returns: (B, img_dim) — fused features
+        img_seq: (B, seq_len, img_dim) — image features yang belum di-pool
+        meta_feat: (B, meta_dim) — embedding metadata
+        Returns: (B, img_dim) — fitur hasil fusi
         """
         meta_proj = self.meta_proj(meta_feat).unsqueeze(1)  # (B, 1, img_dim)
 
-        # Cross-attention: metadata query attends to image patches (keys/values)
-        # Softmax is computed over seq_len.
+        # Cross-attention: query metadata melakukan attend ke patch gambar (keys/values)
+        # Softmax dihitung sepanjang seq_len.
         attn_out, _ = self.cross_attn(
             query=meta_proj, key=img_seq, value=img_seq
         )  # (B, 1, img_dim)
 
-        # Kombinasikan ringkasan visual yg dipandu metadata dengan ringkasan visual global
+        # Gabungkan ringkasan visual yang dipandu metadata dengan ringkasan visual global
         global_img = img_seq.mean(dim=1)  # (B, img_dim)
         fused = self.norm(global_img + self.dropout(attn_out.squeeze(1)))
         return fused
 
 
 class MultimodalClassifier(nn.Module):
-    """Swin-base backbone + metadata cross-attention fusion.
+    """Backbone Swin-base + metadata cross-attention fusion.
     
-    Struktur head IDENTIK dengan GenericClassifier supaya perbandingan adil.
-    Satu-satunya perbedaan: ditambah meta_embed + cross_attn di antara
+    Struktur head IDENTIK dengan GenericClassifier agar perbandingan adil.
+    Satu-satunya perbedaan: ada tambahan meta_embed + cross_attn di antara
     backbone dan head.
     """
 
@@ -247,7 +247,7 @@ class MultimodalClassifier(nn.Module):
                                                global_pool="", **backbone_kwargs)
         feat_dim = self.backbone.num_features
 
-        # Metadata embedding: raw 23D → 64D
+        # Embedding metadata: raw 23D → 64D
         self.meta_embed = nn.Sequential(
             nn.Linear(meta_dim, meta_embed_dim),
             nn.LayerNorm(meta_embed_dim),
@@ -263,7 +263,7 @@ class MultimodalClassifier(nn.Module):
             img_dim=feat_dim, meta_dim=meta_embed_dim, num_heads=4, dropout=0.1
         )
 
-        # Head identik dengan GenericClassifier (supaya fair comparison)
+        # Head identik dengan GenericClassifier (demi fair comparison)
         if is_transformer:
             self.head = nn.Sequential(
                 nn.LayerNorm(feat_dim), nn.Linear(feat_dim, 512),
@@ -274,10 +274,10 @@ class MultimodalClassifier(nn.Module):
                 nn.GELU(), nn.Dropout(head_dropout), nn.Linear(512, num_classes))
 
     def forward(self, x, meta=None):
-        # Extract unpooled sequence of features
+        # Ambil sekuens fitur yang belum di-pool
         img_seq = self.backbone(x)
         
-        # Flatten spatial dimensions if output is a grid
+        # Ratakan dimensi spasial bila output berupa grid
         if img_seq.ndim == 4:
             if img_seq.shape[-1] == self.backbone.num_features:
                 # Swin: (B, H, W, C) -> (B, H*W, C)
@@ -307,7 +307,7 @@ def make_loader(df, cfg, aug, shuffle=False, oversample=False):
 
 def train_one_epoch_multimodal(model, loader, optimizer, criterion, mixup_fn, device,
                                 warmup_scheduler=None):
-    """Sama dengan train_one_epoch_mixup, tapi meneruskan metadata ke model."""
+    """Sama seperti train_one_epoch_mixup, tetapi metadata diteruskan ke model."""
     global ACCUMULATE_STEPS
     model.train()
     total_loss, n = 0.0, 0
@@ -325,7 +325,7 @@ def train_one_epoch_multimodal(model, loader, optimizer, criterion, mixup_fn, de
             imgs_v, metas_v, labels_v = imgs_v[:-1], metas_v[:-1], labels_v[:-1]
         if imgs_v.shape[0] < 2:
             continue
-        # MixUp pada gambar DAN label (metadata TIDAK di-mix — tetap per-sample)
+        # MixUp diterapkan pada gambar DAN label (metadata TIDAK di-mix — tetap per-sample)
         imgs_mixed, soft_targets = mixup_fn(imgs_v, labels_v)
 
         logits = model(imgs_mixed, metas_v)
@@ -349,7 +349,7 @@ def train_one_epoch_multimodal(model, loader, optimizer, criterion, mixup_fn, de
 
 @torch.no_grad()
 def evaluate_multimodal(model, loader, device):
-    """evaluate_full tapi meneruskan metadata."""
+    """evaluate_full tetapi dengan metadata yang diteruskan."""
     model.eval()
     preds, labs = [], []
     for imgs, metas, labels in loader:
@@ -404,11 +404,11 @@ def run_fold(fold_i, train_df, val_df, test_df, backbone, seed, cfg, args):
     is_transformer = "vit" in backbone or "swin" in backbone or "eva" in backbone
     base_lr = 5e-5 if is_transformer else 1e-4
 
-    # Parameter groups: backbone (LR kecil), metadata+fusion+head (LR penuh)
+    # Grup parameter: backbone (LR kecil), metadata+fusion+head (LR penuh)
     optimizer = optim.AdamW([
         {"params": model.backbone.parameters(), "lr": base_lr * BACKBONE_LR_SCALE},
         {"params": list(model.meta_embed.parameters()) + list(model.fusion.parameters()),
-         "lr": base_lr, "weight_decay": 1e-3},  # sedikit lebih besar WD untuk metadata (regularisasi)
+         "lr": base_lr, "weight_decay": 1e-3},  # WD sedikit lebih besar untuk metadata (regularisasi)
         {"params": model.head.parameters(), "lr": base_lr},
     ], weight_decay=1e-4)
 
@@ -474,7 +474,7 @@ def main():
     ham_df = ham_df[has_crop].reset_index(drop=True)
     print(f"{len(ham_df)} gambar dgn crop tersedia")
 
-    # Metadata columns check
+    # Cek kolom metadata
     for col in ["age", "sex", "localization", "dataset"]:
         if col not in ham_df.columns:
             raise ValueError(f"Kolom metadata '{col}' tidak ada di ham_df. Columns: {list(ham_df.columns)}")

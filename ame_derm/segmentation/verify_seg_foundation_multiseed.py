@@ -1,10 +1,10 @@
-"""Summarizes the 3-seed FOUNDATION segmentation training (UnetPlusPlus,
-efficientnet-b4, paper-matched loss, NO BGFF, fully deterministic via
-bf.set_deterministic) -- the first checkpoint in the systematic bottom-up
-rebuild. Confirms whether the new deterministic setup itself produces
-stable, low-variance results (i.e. the fix actually worked), before this
-checkpoint becomes the reference mask source for all later classification
-experiments (Phase 2 onward).
+"""Aggregates the 3-seed FOUNDATION segmentation training run (UnetPlusPlus,
+efficientnet-b4, paper-matched loss, NO BGFF, fully deterministic through
+bf.set_deterministic) -- the initial checkpoint of the systematic bottom-up
+rebuild. Its purpose is to check that the new deterministic setup by itself
+yields stable, low-variance results (i.e. that the fix actually worked),
+before this checkpoint is promoted to the reference mask source for all
+later classification experiments (Phase 2 onward).
 
 Usage:
     python birnet_verify_seg_foundation_multiseed.py

@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """
-FASE C — DINOv2 di PROTOKOL RESMI PanDerm (perbandingan backbone yang adil).
+FASE C — DINOv2 under PanDerm's OFFICIAL PROTOCOL (a fair backbone comparison).
 
-Data IDENTIK dengan PanDerm: split resmi tunggal (kolom 'split' train/val/test),
-full-image ISIC2018, test-set 1232 yang sama, metrik macro-F1.
-Resep meniru PanDerm sedekat mungkin: layer-decay 0.65, mixup 0.8/cutmix 1.0,
-weighted sampler, label smoothing 0.1, warmup+cosine, 50 epoch, TTA saat test.
+Data IDENTICAL to PanDerm: the single official split (train/val/test in the
+'split' column), full-image ISIC2018, the same 1232-image test set, macro-F1 metric.
+The recipe copies PanDerm as closely as it can: layer-decay 0.65, mixup 0.8/cutmix 1.0,
+weighted sampler, label smoothing 0.1, warmup+cosine, 50 epochs, TTA at test time.
 
-Backbone default = DINOv2-Large reg4 (sama dgn generalist champion).
---images full  -> PanDerm/data/HAM10000_clean/ISIC2018/  (jawab: efek full-image pd DINOv2)
+Default backbone = DINOv2-Large reg4 (identical to the generalist champion).
+--images full  -> PanDerm/data/HAM10000_clean/ISIC2018/  (answer: full-image effect on DINOv2)
 --images crop  -> BIRNet_Research/outputs/cropped_phase1_final/
 
-Pakai .venv (timm 1.0.28). Contoh:
+Uses .venv (timm 1.0.28). Example:
   .venv/bin/python birnet_dinov2_official_protocol.py --images full --epochs 50
 """
 import argparse, os, math, json
@@ -36,7 +36,7 @@ IMG_DIRS = {
 IMAGENET_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_STD = (0.229, 0.224, 0.225)
 
-# Mapping zona anatomis (dari EXPERT_MAPPING champion) untuk expert per-zona
+# Anatomical-zone mapping (taken from the champion's EXPERT_MAPPING) for per-zone experts
 ZONE_MAP = {
     "torso": ["back", "trunk", "abdomen", "chest"],
     "limb": ["lower extremity", "upper extremity", "foot", "hand", "acral"],
@@ -75,7 +75,7 @@ def build_transforms(img_size):
 
 
 def layer_decay_param_groups(model, base_lr, weight_decay, decay):
-    """LR layer-wise decay ala PanDerm (backbone awal LR kecil)."""
+    """Layer-wise LR decay in PanDerm style (early backbone layers get a small LR)."""
     blocks = getattr(model, "blocks", [])
     n = len(blocks) + 1
     groups = {}
@@ -87,7 +87,7 @@ def layer_decay_param_groups(model, base_lr, weight_decay, decay):
         elif any(name.startswith(k) for k in ("patch_embed", "cls_token", "reg_token",
                                               "pos_embed", "mask_token")):
             lid = 0
-        else:  # norm/head
+        else:  # normalization head
             lid = n
         scale = decay ** (n - lid)
         wd = 0.0 if (p.ndim == 1 or name.endswith(".bias")) else weight_decay
@@ -106,7 +106,7 @@ def evaluate(model, loader, device, tta=False):
         x = x.to(device, non_blocking=True)
         views = [x]
         if tta:
-            views += [torch.flip(x, [3]), torch.flip(x, [2])]  # hflip, vflip
+            views += [torch.flip(x, [3]), torch.flip(x, [2])]  # horizontal, vertical flips
         p = torch.zeros(x.size(0), model.num_classes, device=device)
         for v in views:
             p += torch.softmax(model(v), 1)
@@ -159,7 +159,7 @@ def main():
     img_dir = IMG_DIRS[args.images]
     df = pd.read_csv(args.csv)
     df = df[df["split"].isin(["train", "val", "test"])].copy()
-    n_cls = int(df.label.max()) + 1  # 7 kelas HAM (dihitung dari FULL df sebelum filter zona)
+    n_cls = int(df.label.max()) + 1  # 7 HAM classes (computed on the FULL df before zone filtering)
     tr, va, te = (df[df.split == s].copy() for s in ["train", "val", "test"])
     if args.zone:
         locs = ZONE_MAP[args.zone]
@@ -174,8 +174,8 @@ def main():
     ds_va = HAMDataset(va, img_dir, eval_tf)
     ds_te = HAMDataset(te, img_dir, eval_tf)
 
-    # weighted sampler (inverse class freq) — ala PanDerm --weights
-    # robust utk subset zona (kelas bisa hilang): map label->1/count via value_counts
+    # weighted sampler (inverse class frequency) — PanDerm --weights style
+    # robust for zone subsets (classes may vanish): map label->1/count with value_counts
     vc = tr["label"].value_counts()
     sample_w = tr["label"].map(lambda l: 1.0 / vc[l]).values
     sampler = WeightedRandomSampler(torch.DoubleTensor(sample_w), len(sample_w), replacement=True)

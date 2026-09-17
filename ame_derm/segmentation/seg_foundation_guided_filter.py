@@ -1,11 +1,13 @@
-"""Tests guided-image-filter post-processing (He et al. 2010) as a
-dependency-free alternative to dense CRF (pydensecrf failed to build --
-Cython/Python version incompatibility; cv2.ximgproc unavailable in this
-opencv-python build) for edge-aware boundary refinement of the predicted
-segmentation probability map, using the original RGB image as the guide.
+"""Evaluates guided-image-filter post-processing (He et al. 2010) as a
+dependency-free substitute for dense CRF (pydensecrf would not build -- a
+Cython/Python version incompatibility; and cv2.ximgproc is missing from
+this opencv-python build). It performs edge-aware boundary refinement of
+the predicted segmentation probability map, with the original RGB image
+serving as the guide.
 
-No retraining needed -- purely inference-time post-processing, same spirit
-as the CRF item on the "cheap wins before expensive retraining" list.
+No retraining is involved -- this is purely inference-time post-processing,
+in the same spirit as the CRF item on the "cheap wins before expensive
+retraining" list.
 
 Usage:
     python birnet_seg_foundation_guided_filter.py
@@ -25,8 +27,9 @@ CKPT = "BIRNet_Research/outputs/checkpoints/foundation/unetpp_b4_foundation_seed
 
 
 def guided_filter(guide: np.ndarray, src: np.ndarray, radius: int = 8, eps: float = 1e-3) -> np.ndarray:
-    """Guided filter (He, Sun, Tang 2010). guide: HxW grayscale float32 [0,1].
-    src: HxW probability map float32 [0,1]. Returns refined probability map."""
+    """Guided filter (He, Sun, Tang 2010). Inputs are guide: an HxW grayscale
+    float32 array in [0,1], and src: an HxW probability map of float32 in
+    [0,1]. The returned value is the refined probability map."""
     box = lambda x: cv2.boxFilter(x, cv2.CV_32F, (radius, radius))
     mean_I = box(guide)
     mean_p = box(src)
@@ -73,7 +76,7 @@ def main():
             prob = torch.sigmoid(logits).cpu().numpy()[0, 0].astype(np.float32)
             gt = masks.numpy()[0, 0]
 
-            # de-normalize image back to [0,1] grayscale guide
+            # undo normalization, returning the image to a [0,1] grayscale guide
             img_np = imgs.numpy()[0].transpose(1, 2, 0)
             mean = np.array([0.485, 0.456, 0.406]); std = np.array([0.229, 0.224, 0.225])
             img_rgb = np.clip(img_np * std + mean, 0, 1).astype(np.float32)

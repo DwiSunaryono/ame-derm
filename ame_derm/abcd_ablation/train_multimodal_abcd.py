@@ -1,10 +1,10 @@
-"""Latih generalist DINOv2 multimodal: localization (15D) + ABCD features (8D) = 23D meta.
+"""Latih generalist DINOv2 multimodal: localization (15D) + fitur ABCD (8D) = 23D meta.
 
-Strategi: reuse seluruh pipeline train_multimodal_ablation (arsitektur cross-attention,
-MixUp, oversample, class-weight, discriminative LR, early-stop F1) — hanya metadata
-yang diperluas dari 15D (loc-only) → 23D (loc + ABCD).
+Strategi: pakai ulang seluruh pipeline train_multimodal_ablation (arsitektur
+cross-attention, MixUp, oversample, class-weight, discriminative LR, early-stop
+F1) — hanya metadata yang diperluas dari 15D (loc-only) → 23D (loc + ABCD).
 
-8 Fitur ABCD (dari birnet_extract_abcd_features.py, sudah tersimpan di CSV):
+8 Fitur ABCD (dari birnet_extract_abcd_features.py, telah tersimpan di CSV):
   asymmetry_h, asymmetry_v  : asimetri geometri (MEL > NV)
   border_irreg, border_jagged: kekasaran border (AKIEC >> BKL, MEL > NV)
   color_std_r/g/b           : variegasi warna (MEL multi-warna)
@@ -53,8 +53,8 @@ ABCD_CSV = "BIRNet_Research/outputs/abcd_features.csv"
 CKPT_DIR_BASE = "BIRNet_Research/outputs/checkpoints/multimodal_abcd"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-# Normalisasi ABCD ke [0,1] berdasarkan statistik dataset (dari output ekstraksi)
-# Diambil dari output: percentile 1% - 99% untuk robustness terhadap outlier
+# Normalisasi ABCD ke [0,1] mengacu statistik dataset (dari output ekstraksi)
+# Diambil dari output: percentile 1% - 99% demi robustness terhadap outlier
 ABCD_NORM = {
     "asymmetry_h":  (0.0049, 1.0),
     "asymmetry_v":  (0.0052, 1.0),
@@ -68,7 +68,7 @@ ABCD_NORM = {
 ABCD_COLS = list(ABCD_NORM.keys())
 ABCD_DIM = len(ABCD_COLS)  # 8
 
-# Grup fitur ABCD untuk ablasi (nilai di luar grup di-nol, arsitektur tetap 23D)
+# Grup fitur ABCD untuk ablasi (nilai di luar grup dibuat nol, arsitektur tetap 23D)
 GEOM_COLS = {"asymmetry_h", "asymmetry_v", "border_irreg", "border_jagged", "compactness"}
 COLOR_COLS = {"color_std_r", "color_std_g", "color_std_b"}
 
@@ -81,7 +81,7 @@ def abcd_group_mask(group):
 
 
 def load_abcd_map(abcd_csv):
-    """Muat CSV ABCD → dict {image_id: np.array(8,)}."""
+    """Baca CSV ABCD → dict {image_id: np.array(8,)}."""
     df = pd.read_csv(abcd_csv)
     abcd_map = {}
     for row in df.itertuples(index=False):
@@ -97,7 +97,7 @@ def load_abcd_map(abcd_csv):
 
 class SkinLesionDatasetABCD(SkinLesionDatasetMultimodal):
     """Dataset multimodal dengan metadata LOC (15D) + ABCD (8D) = 23D.
-    Jika no_abcd=True, hanya pakai LOC (15D) — untuk ablasi bersih."""
+    Bila no_abcd=True, hanya LOC (15D) yang dipakai — demi ablasi bersih."""
 
     def __init__(self, df, img_size, abcd_map, transform=None,
                  oversample=False, target_per_class=None, num_classes=7,
@@ -106,21 +106,22 @@ class SkinLesionDatasetABCD(SkinLesionDatasetMultimodal):
                          oversample=oversample, target_per_class=target_per_class,
                          num_classes=num_classes)
         self.abcd_map = abcd_map
-        # mask 8D (0/1): fitur di luar grup di-nol. None = semua aktif.
+        # mask 8D (0/1): fitur di luar grup dibuat nol. None = semua aktif.
         self.abcd_mask = abcd_mask if abcd_mask is not None else np.ones(ABCD_DIM, dtype=np.float32)
 
     def __getitem__(self, idx):
         img_t, _, label = super().__getitem__(idx)
         image_id = self.entries[idx][0]
-        # SELALU 23D: loc (15) + abcd (8, grup non-aktif di-nol). Arsitektur identik -> ablasi bersih.
+        # SELALU 23D: loc (15) + abcd (8, grup non-aktif dibuat nol). Arsitektur identik -> ablasi bersih.
         loc_vec = self.meta_map.get(image_id, np.zeros(tma.META_DIM, dtype=np.float32))
         abcd_vec = self.abcd_map.get(image_id, np.zeros(ABCD_DIM, dtype=np.float32)) * self.abcd_mask
         meta_t = torch.from_numpy(np.concatenate([loc_vec, abcd_vec]))
         return img_t, meta_t, label
 
 
-# === FIX BUG-1 (RAW): patch getitem induk agar BYPASS CLAHE+bilateral (baca crop RAW),
-# konsisten dgn champion. super().__getitem__ di SkinLesionDatasetABCD memakai versi ini. ===
+# === FIX BUG-1 (RAW): patch getitem induk agar melewati (BYPASS) CLAHE+bilateral
+# (membaca crop RAW), konsisten dengan champion. super().__getitem__ di
+# SkinLesionDatasetABCD memakai versi ini. ===
 import cv2 as _cv2
 
 def _raw_multimodal_getitem(self, idx):
@@ -145,7 +146,7 @@ def _raw_multimodal_getitem(self, idx):
     meta_vec = self.meta_map.get(image_id, self.meta_map.get(base_id, np.zeros(tma.META_DIM, dtype=np.float32)))
     return img_t, torch.from_numpy(meta_vec), int(label)
 
-tma.SkinLesionDatasetMultimodal.__getitem__ = _raw_multimodal_getitem  # aktifkan RAW
+tma.SkinLesionDatasetMultimodal.__getitem__ = _raw_multimodal_getitem  # aktifkan mode RAW
 
 
 def run_fold_abcd(fold_i, train_df, val_df, test_df, backbone, seed, cfg,
@@ -153,7 +154,7 @@ def run_fold_abcd(fold_i, train_df, val_df, test_df, backbone, seed, cfg,
     bf.set_deterministic(seed)
     suffix = f"abcd_{abcd_group}"
     abcd_mask = abcd_group_mask(abcd_group)
-    meta_dim = tma.META_DIM + ABCD_DIM  # SELALU 23 (placebo=zeros -> arsitektur identik utk ablasi bersih)
+    meta_dim = tma.META_DIM + ABCD_DIM  # SELALU 23 (placebo=zeros -> arsitektur identik untuk ablasi bersih)
     if ckpt_dir is None:
         ckpt_dir = CKPT_DIR_BASE
     os.makedirs(ckpt_dir, exist_ok=True)
@@ -271,12 +272,12 @@ def main():
     if args.no_abcd:
         args.abcd_group = "none"
 
-    # Aktifkan metadata: HANYA localization (konsisten dengan champion)
+    # Nyalakan metadata: HANYA localization (konsisten dengan champion)
     tma.set_active_meta_fields("localization")
     print(f"Meta LOC {tma.META_DIM}D + ABCD {ABCD_DIM}D = {tma.META_DIM + ABCD_DIM}D (SELALU) "
           f"| grup ABCD aktif: {args.abcd_group}")
 
-    # Load ABCD map
+    # Muat ABCD map
     abcd_map = load_abcd_map(args.abcd_csv)
 
     cfg = bf.Config()
@@ -287,7 +288,7 @@ def main():
     ham_df = ham_df[has_crop].reset_index(drop=True)
     print(f"{len(ham_df)} gambar HAM10000 dengan crop tersedia")
 
-    # Split SAMA dgn champion (fully_representative, stratify label+dataset) -> angka comparable
+    # Split SAMA dengan champion (fully_representative, stratify label+dataset) -> angka comparable
     bucketed, _ = detect_metadata_fields(ham_df, 9)
     overlap = [c for c in bucketed.columns if c in ham_df.columns]
     ham_meta = pd.concat([ham_df.drop(columns=overlap), bucketed], axis=1)

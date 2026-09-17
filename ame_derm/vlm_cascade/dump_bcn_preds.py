@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Dump prediksi per-sampel BCN test (preds/probs/labs/image_id) utk model terbaik,
-aligned ke split lesion-grouped seed-42. Dipakai VLM-cascade agar tak salah model.
+"""Dump prediksi tiap sampel BCN test (preds/probs/labs/image_id) buat model terbaik,
+diselaraskan ke split lesion-grouped seed-42. Dipakai VLM-cascade supaya tidak keliru model.
 
 Usage (kamu jalankan; ~5 menit GPU):
   .venv/bin/python3 _dump_bcn_preds.py \

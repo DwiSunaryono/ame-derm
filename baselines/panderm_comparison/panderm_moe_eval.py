@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""MoE+PanDerm: PanDerm-Large gen + PanDerm-base experts per-zona, routing by
-localization, alpha di-tune di VAL -> TEST. Semua prob dari val.csv/test.csv PanDerm
-(kolom filename + probability_class_*), align by filename.
+"""MoE+PanDerm: PanDerm-Large gen + PanDerm-base per-zone experts, routing by
+localization, alpha tuned on VAL -> TEST. Every probability comes from PanDerm's
+val.csv/test.csv (filename + probability_class_* columns), aligned by filename.
 
-Menjawab sel 2x2 yg hilang: MoE+PanDerm vs MoE+DINOv2.
-Pakai: .venv/bin/python birnet_panderm_moe_eval.py --fold 0 --seed 122
+Fills in the missing 2x2 cell: MoE+PanDerm vs MoE+DINOv2.
+Usage: .venv/bin/python birnet_panderm_moe_eval.py --fold 0 --seed 122
 """
 import os, argparse
 import numpy as np, pandas as pd
@@ -43,12 +43,12 @@ def main():
     fold_csv["fn"] = fold_csv["image"].apply(lambda p: os.path.basename(str(p)))
     loc_of = dict(zip(fold_csv["fn"], fold_csv["localization"]))
 
-    # gen (PanDerm-Large, rigorous run) — full val/test probs
+    # gen (PanDerm-Large, rigorous run) — val/test probabilities in full
     gen_dir = f"{PDRES}/rigorous_5fold/fold{F}_seed{S}"
     gen_val_p, yv_map = probs_by_filename(f"{gen_dir}/val.csv")
     gen_te_p, gen_te_y = probs_by_filename(f"{gen_dir}/test.csv")
 
-    # experts (PanDerm-base) — zone val/test probs
+    # experts (PanDerm-base) — zone val/test probabilities
     exp_val, exp_te = {}, {}
     for z in ZONE_MAP:
         ed = f"{PDRES}/moe_panderm/fold{F}_seed{S}/{z}"
@@ -58,19 +58,19 @@ def main():
         exp_te[z], _ = probs_by_filename(f"{ed}/test.csv")
 
     def routed(gen_p, exp_p, y_ref):
-        """Bangun (routed_expert, gen, y) untuk semua filename di y_ref, urut konsisten."""
+        """Build (routed_expert, gen, y) for every filename in y_ref, in a consistent order."""
         rex, rgen, y = [], [], []
         for fn, gv in gen_p.items():
             z = get_zone(loc_of.get(fn, "unknown"))
             ex = exp_p[z].get(fn) if z in exp_p else None
-            rex.append(ex if ex is not None else gv)   # fallback gen kalau zona 'gen' / tak ada
+            rex.append(ex if ex is not None else gv)   # fall back to gen when zone is 'gen' / absent
             rgen.append(gv); y.append(y_ref[fn])
         return np.array(rex), np.array(rgen), np.array(y)
 
     vex, vgen, yv = routed(gen_val_p, exp_val, yv_map)
     tex, tgen, yt = routed(gen_te_p, exp_te, gen_te_y)
 
-    # sweep alpha di VAL
+    # sweep alpha on VAL
     best_a, best_m = 0.0, -1
     for a in np.arange(0.0, 0.951, 0.05):
         m = f1_score(yv, (a * vex + (1 - a) * vgen).argmax(1), average="macro", zero_division=0)

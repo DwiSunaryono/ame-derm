@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Suplai TERTARGET kelas langka untuk BCN train dari sumber dermoskopi eksternal.
+"""Pasok TERTARGET kelas langka untuk BCN train dari sumber dermoskopi eksternal.
 
-Motivasi (percobaanReal2.md, Aug-15): plafon BCN dibatasi kelaparan data kelas
-langka (akiec 147, df 25, vasc 22). Bukan menyerah — SUPLAI datanya. Sumber
-dermoskopi (domain cocok BCN): MSKCC, HIBA, HAM10000. Hanya kelas target di-pool,
-kelas umum tak disentuh (hindari domain-shift kelas mudah). PAD-UFES SENGAJA
-dikecualikan (klinis/HP, beda domain).
+Latar (percobaanReal2.md, Aug-15): plafon BCN tersandung kelangkaan data kelas
+langka (akiec 147, df 25, vasc 22). Bukan pasrah — PASOK datanya. Sumber
+dermoskopi (domain cocok BCN): MSKCC, HIBA, HAM10000. Cuma kelas target yang
+di-pool, kelas umum dibiarkan (hindari domain-shift kelas mudah). PAD-UFES
+SENGAJA dikecualikan (klinis/HP, beda domain).
 
 Label canonical (EXT_TO_LABEL): 0=mel 1=nv 2=bcc 3=akiec 4=bkl 5=df 6=vasc.
 Schema output IDENTIK build_bcn_df: {image_id,img_path,label,localization,age,sex,dataset,lesion_id}.
@@ -31,7 +31,7 @@ CROP_DIR = config.CROP_DIR
 
 
 def _resolve(iid, raw_p, use_crop):
-    """Pakai crop Phase-1 (samakan framing BCN 'crop') jika ada; else RAW."""
+    """Gunakan crop Phase-1 (menyamakan framing BCN 'crop') kalau ada; jika tidak RAW."""
     if use_crop:
         cp = os.path.join(CROP_DIR, f"{iid}.jpg")
         if os.path.exists(cp):
@@ -64,7 +64,7 @@ def _from_csv(csv, imgdir, src, label_ids, use_crop=True):
 
 
 def _from_ham(label_ids, cfg, use_crop=True):
-    """HAM rare-class, label 0-6 canonical. Pakai crop Phase-1 jika ada (match BCN 'crop')."""
+    """HAM kelas langka, label 0-6 canonical. Gunakan crop Phase-1 bila tersedia (match BCN 'crop')."""
     from ame_derm.common import birnet_final as bf
     paths = bf.DatasetPaths(cfg)
     ham = bf.build_ham10000_dataframe(paths)

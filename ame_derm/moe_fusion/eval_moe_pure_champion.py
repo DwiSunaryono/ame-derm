@@ -178,11 +178,11 @@ def main():
     print("Extracting TEST probs...")
     test_tta, test_labels, test_metas = extract_probs(models, test_loader, cfg)
 
-    # Base arrays
+    # Array dasar
     val_gen_pure = np.array(val_tta["gen_pure"])
     test_gen_pure = np.array(test_tta["gen_pure"])
 
-    # Combos
+    # Kombinasi
     combos = [
         ("Kombinasi 1: Murni 100% (Torso v1, Limb v1, Head v1)", "head_v1"),
         ("Kombinasi 2: Murni + Sintetis Kepala (Torso v1, Limb v1, Head v2)", "head_v2")
@@ -193,10 +193,10 @@ def main():
         val_exp = build_exp_arrays(val_tta, val_df, head_ver=head_key)
         test_exp = build_exp_arrays(test_tta, test_df, head_ver=head_key)
         
-        # 1. Static 80:20
+        # 1. Statis 80:20
         f1_static = eval_logic(test_gen_pure, test_exp, test_metas, test_labels, routers=None)
         
-        # 2. Smart Router (Ensemble of 10 routers to eliminate variance)
+        # 2. Smart Router (Ensemble 10 router guna menghapus variansi)
         print("Training Ensemble 10 Smart Routers...")
         routers = train_router_ensemble(val_gen_pure, val_exp, val_metas, val_labels, n_routers=10)
         f1_router = eval_logic(test_gen_pure, test_exp, test_metas, test_labels, routers=routers)

@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """
-AME-Derm inference-latency benchmark (for the paper's Computational Complexity section).
+AME-Derm inference-latency benchmark (for the Computational Complexity section of the paper).
 
-Measures WALL-CLOCK forward-pass latency of the actual backbones on THIS machine's GPU,
-composed exactly as the pipeline runs at inference:
+Records WALL-CLOCK forward-pass latency for the real backbones on the GPU of THIS
+machine, arranged exactly as the inference pipeline composes them:
   - Phase-2 classification per image = (generalist ViT-L/14 + 1 routed expert ViT-B/14) x 6-view TTA
   - Phase-1 segmentation per image   = 3-model ensemble x 4-view flip TTA   (optional; needs smp)
-Latency depends on architecture + input size + hardware + precision, NOT on trained weights,
-so models are built with pretrained=False (no download needed); timing is valid.
+Latency is governed by architecture + input size + hardware + precision, NOT by trained weights,
+therefore models are created with pretrained=False (nothing to download); the timing stays valid.
 
 Run:
   python birnet_bench_inference.py --precision fp16 --repeats 50 --n_test 11982
-  python birnet_bench_inference.py --precision fp32          # if eval uses fp32
+  python birnet_bench_inference.py --precision fp32          # when evaluation runs in fp32
 
-Paste the printed "PASTE-READY" block back.
+Copy back the printed "PASTE-READY" block.
 """
 import argparse, time, statistics, platform
 import torch
@@ -23,7 +23,7 @@ def sync():
         torch.cuda.synchronize()
 
 def time_module(model, x, repeats, warmup, amp_dtype):
-    """Return (mean_ms, std_ms) per forward call of `model` on input `x`."""
+    """Give (mean_ms, std_ms) for each forward call of `model` on input `x`."""
     model.eval()
     use_amp = amp_dtype is not None
     with torch.no_grad():
@@ -41,8 +41,8 @@ def time_module(model, x, repeats, warmup, amp_dtype):
 
 def build_cls(name, device, img):
     import timm
-    # DINOv2(+reg) timm models default to img_size=518; force the paper's 224x224
-    # (pos-embed is interpolated to the 224/14 = 16x16 patch grid).
+    # DINOv2(+reg) timm models default to img_size=518; impose the paper's 224x224
+    # (the pos-embed is interpolated onto the 224/14 = 16x16 patch grid).
     try:
         m = timm.create_model(name, pretrained=False, num_classes=7, img_size=img)
     except TypeError:
@@ -69,7 +69,7 @@ def main():
     print(f"# device={dev}  gpu={gpu}  torch={torch.__version__}  precision={args.precision}")
     print(f"# img={args.img}  tta_cls={args.tta_cls}  tta_seg={args.tta_seg}  repeats={args.repeats}")
 
-    # ---- Phase-2 classification: generalist + one expert, batch = TTA views ----
+    # ---- Phase-2 classification: one expert plus generalist, batch = TTA views ----
     xb_cls = torch.randn(args.tta_cls, 3, args.img, args.img, device=dev)
     results = {}
     for role, name in [("generalist (ViT-L/14)", args.gen), ("expert (ViT-B/14)", args.exp)]:
@@ -87,7 +87,7 @@ def main():
     if results.get("generalist (ViT-L/14)") and results.get("expert (ViT-B/14)"):
         cls_total = results["generalist (ViT-L/14)"][0] + results["expert (ViT-B/14)"][0]
 
-    # ---- Phase-1 segmentation ensemble (optional; needs segmentation_models_pytorch) ----
+    # ---- Phase-1 segmentation ensemble (optional; requires segmentation_models_pytorch) ----
     seg_total = None
     try:
         import segmentation_models_pytorch as smp
@@ -111,7 +111,7 @@ def main():
     except Exception as e:
         print(f"# segmentation timing skipped (segmentation_models_pytorch not usable: {e})")
 
-    # ---- Summary (paste-ready) ----
+    # ---- Summary (ready to paste) ----
     print("\n===== PASTE-READY =====")
     print(f"GPU: {gpu} | precision: {args.precision} | input {args.img}x{args.img}")
     if cls_total is not None:

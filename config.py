@@ -1,7 +1,7 @@
-"""Central path configuration for AME-Derm.
+"""Shared filesystem-path settings for AME-Derm.
 
-All values can be overridden via environment variables (see .env.example)
-instead of editing source files directly.
+Rather than editing the source, each value may be replaced through an
+environment variable (refer to .env.example).
 """
 
 import os
@@ -15,12 +15,12 @@ except ImportError:
 
 BASE_DIR = Path(__file__).parent
 
-# Root used by the PanDerm-comparison scripts to locate sibling data/checkpoints.
+# Directory root the PanDerm-comparison scripts use to find sibling data and checkpoints.
 AME_DERM_ROOT = os.getenv("AME_DERM_ROOT", str(BASE_DIR))
 
-# Phase-1 segmentation crops consumed by every downstream classifier script.
+# Segmentation crops from Phase 1, read by all downstream classifier scripts.
 CROP_DIR = os.getenv("CROP_DIR", "BIRNet_Research/outputs/cropped_phase1_final")
 
-# BCN20000 external-validation cohort (see docs/DATA_PREPARATION.md).
+# External-validation cohort from BCN20000 (refer to docs/DATA_PREPARATION.md).
 BCN_CSV = os.getenv("BCN_CSV", "panderm_datasets/BCN20000/BCN20000/bcn20000.csv")
 BCN_IMG = os.getenv("BCN_IMG", "panderm_datasets/BCN20000/BCN20000/images")

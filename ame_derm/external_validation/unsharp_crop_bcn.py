@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """RAW-crop + unsharp mask untuk BCN20000.
 
-Motivasi (percobaanReal2.md, konsensus 4-sumber Aug-15): pembeda akiec vs bcc =
+Latar (percobaanReal2.md, konsensus 4-sumber Aug-15): pembeda akiec vs bcc =
 WARNA + STRUKTUR HALUS (arborizing vessels, blue-gray globules, skuama, kontras).
-Normalisasi "wp" MERATAKAN sinyal ini. Skrip ini justru MENONJOLKAN struktur
-halus/tepi pada RAW crop (warna asli dipertahankan) via unsharp mask ringan.
+Normalisasi "wp" MERATAKAN sinyal ini. Skrip ini justru MENYOROTI struktur
+halus/tepi pada RAW crop (warna asli tetap) melalui unsharp mask ringan.
 
 Input : RAW Phase-1 crop  (CROP_DIR/{isic_id}.jpg)
 Output: cache mode 'crop>unsharp' -> bcn_pipe/crop_unsharp/{nama_file_asli}
         (dinamai r['image'] agar terbaca build_bcn_df '>'-mode)
 
 Usage:
-  # preview 12 contoh (before/after), tak nulis cache:
+  # pratinjau 12 contoh (before/after), tanpa menulis cache:
   .venv/bin/python3 birnet_unsharp_crop_bcn.py --preview
   # proses penuh -> cache:
   .venv/bin/python3 birnet_unsharp_crop_bcn.py
@@ -33,8 +33,8 @@ OUT_DIR = "BIRNet_Research/outputs/bcn_pipe/crop_unsharp"
 
 
 def unsharp(img_bgr, amount=0.8, sigma=1.5):
-    """Unsharp mask ringan: pertajam tepi/struktur halus, warna RAW dipertahankan.
-    out = img + amount*(img - blur). amount kecil agar tak menambah noise berlebih."""
+    """Unsharp mask ringan: pertajam tepi/struktur halus, warna RAW tetap dijaga.
+    out = img + amount*(img - blur). amount kecil supaya tidak menambah noise berlebih."""
     blur = cv2.GaussianBlur(img_bgr, (0, 0), sigma)
     sharp = cv2.addWeighted(img_bgr, 1 + amount, blur, -amount, 0)
     return np.clip(sharp, 0, 255).astype(np.uint8)

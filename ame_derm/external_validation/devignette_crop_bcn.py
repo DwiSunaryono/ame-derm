@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
 """De-vignette + tight lesion crop untuk BCN20000.
 
-Motivasi (percobaanReal2.md, temuan Aug-14): pipeline "wp>crop" TIDAK membuang
-vignette FOV hitam. Gambar dg vignette berat (>15% hitam, ~26% test) punya
-error-rate 42.5% vs 28.8% (+13.8pp). Skrip ini memperbaikinya secara klasik
+Latar (percobaanReal2.md, temuan Aug-14): alur "wp>crop" TIDAK ikut membuang
+vignette FOV hitam. Citra dengan vignette berat (>15% hitam, ~26% test) mencatat
+error-rate 42.5% vs 28.8% (+13.8pp). Skrip ini membenahinya secara klasik
 (tanpa model; Phase-1 HAM under-crop di BCN):
 
-  Tahap 1 — DE-VIGNETTE: deteksi lingkaran FOV terang, crop ke bounding-box FOV,
-            (opsional) putihkan piksel luar FOV agar tak jadi fitur spurious.
-  Tahap 2 — TIGHT LESION CROP: di dalam FOV, deteksi lesi via deviasi warna LAB
-            dari kulit (cincin tepi FOV = referensi kulit), ambil komponen
-            lesi terbesar dekat pusat, crop + margin, kotakkan, resize.
+  Tahap 1 — DE-VIGNETTE: deteksi lingkaran FOV terang, pangkas ke bounding-box FOV,
+            (opsional) putihkan piksel di luar FOV supaya tidak menjadi fitur spurious.
+  Tahap 2 — TIGHT LESION CROP: di dalam FOV, temukan lesi lewat deviasi warna LAB
+            terhadap kulit (cincin tepi FOV = acuan kulit), ambil komponen
+            lesi terbesar yang dekat pusat, potong + margin, jadikan kotak, resize.
 
-Fallback aman: jika FOV ~ seluruh gambar (tak ada vignette) -> lewati tahap 1;
-jika lesi tak terdeteksi -> center-crop FOV. Warna RAW dipertahankan (tanpa CLAHE).
+Fallback aman: bila FOV ~ seluruh gambar (tanpa vignette) -> lewati tahap 1;
+bila lesi tidak terdeteksi -> center-crop FOV. Warna RAW tetap dipertahankan (tanpa CLAHE).
 
-Output: cache mode 'devig_crop' agar langsung dipakai retrain via pipe-system.
+Output: cache mode 'devig_crop' supaya bisa langsung dipakai retrain via pipe-system.
 
 Usage:
   # cek visual dulu (SEBELUM proses penuh) — 12 contoh before/after:
@@ -34,7 +34,7 @@ DEFAULT_OUT = "BIRNet_Research/outputs/bcn_pipe/devig_crop"
 
 
 def detect_fov(gray, dark_thr=40):
-    """Kembalikan mask boolean area TERANG (FOV) = komponen terang terbesar, lubang diisi."""
+    """Hasilkan mask boolean area TERANG (FOV) = komponen terang terbesar, lubang ditambal."""
     lit = (gray > dark_thr).astype(np.uint8)
     lit = cv2.morphologyEx(lit, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7)))
     n, lbl, stats, _ = cv2.connectedComponentsWithStats(lit, connectivity=8)
@@ -42,7 +42,7 @@ def detect_fov(gray, dark_thr=40):
         return np.ones_like(gray, dtype=bool)
     big = 1 + int(np.argmax(stats[1:, cv2.CC_STAT_AREA]))
     mask = (lbl == big).astype(np.uint8)
-    # isi lubang: floodfill dari luar lalu invert
+    # tutup lubang: floodfill dari luar lalu balik
     h, w = mask.shape
     ff = mask.copy()
     m2 = np.zeros((h + 2, w + 2), np.uint8)
@@ -53,7 +53,7 @@ def detect_fov(gray, dark_thr=40):
 
 
 def skin_reference(lab, fov):
-    """Referensi kulit = median LAB pada CINCIN tepi dalam FOV (biasanya kulit normal)."""
+    """Acuan kulit = median LAB di CINCIN tepi bagian dalam FOV (umumnya kulit normal)."""
     fov_u = fov.astype(np.uint8)
     er = cv2.erode(fov_u, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (25, 25)))
     ring = fov & (~er.astype(bool))
@@ -62,8 +62,8 @@ def skin_reference(lab, fov):
 
 
 def detect_lesion(lab, fov, ref, thr=22):
-    """Mask lesi = piksel FOV yg jauh dari kulit (LAB), dibersihkan morfologi,
-    komponen terbesar yg condong ke pusat."""
+    """Mask lesi = piksel FOV yang berjarak jauh dari kulit (LAB), dibersihkan
+    secara morfologi, komponen terbesar yang cenderung ke pusat."""
     dist = np.sqrt(((lab - ref) ** 2).sum(axis=2))
     les = ((dist > thr) & fov).astype(np.uint8)
     k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
@@ -77,10 +77,10 @@ def detect_lesion(lab, fov, ref, thr=22):
     best, best_score = None, -1
     for i in range(1, n):
         area = stats[i, cv2.CC_STAT_AREA]
-        if area < 0.005 * h * w:  # buang bintik
+        if area < 0.005 * h * w:  # singkirkan bintik
             continue
         dxy = np.hypot(cent[i][0] - cx, cent[i][1] - cy)
-        score = area - 2.0 * dxy * dxy  # besar & dekat pusat
+        score = area - 2.0 * dxy * dxy  # luas & dekat pusat
         if score > best_score:
             best_score, best = score, i
     return (lbl == best) if best is not None else None
@@ -105,22 +105,22 @@ def process(img_bgr, img_size=224, whiten_outside=True, margin=0.18):
     gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
     H, W = gray.shape
     fov = detect_fov(gray)
-    # Tahap 1 — de-vignette: kalau vignette signifikan, crop ke bbox FOV
+    # Tahap 1 — de-vignette: bila vignette cukup besar, pangkas ke bbox FOV
     if fov.mean() < 0.92:
         ys, xs = np.where(fov)
         img_bgr = img_bgr[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
         fov = fov[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
-        if whiten_outside:  # netralkan luar-FOV agar bukan fitur (pakai warna kulit)
+        if whiten_outside:  # netralkan area luar-FOV supaya bukan fitur (gunakan warna kulit)
             lab0 = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2LAB).astype(np.float32)
             ref0 = skin_reference(lab0, fov)
             fill_bgr = cv2.cvtColor(np.uint8([[ref0]]), cv2.COLOR_LAB2BGR)[0, 0]
             img_bgr[~fov] = fill_bgr
-    # Tahap 2 — tight lesion crop
+    # Tahap 2 — pangkas lesi rapat
     lab = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2LAB).astype(np.float32)
     ref = skin_reference(lab, fov)
     les = detect_lesion(lab, fov, ref)
     bb = square_bbox(les, img_bgr.shape[:2], margin) if les is not None else None
-    if bb is None:  # fallback: center-crop 78% FOV
+    if bb is None:  # fallback: center-crop 78% dari FOV
         h, w = img_bgr.shape[:2]; s = int(min(h, w) * 0.78)
         cx, cy = w // 2, h // 2
         bb = (max(0, cx - s // 2), max(0, cy - s // 2))

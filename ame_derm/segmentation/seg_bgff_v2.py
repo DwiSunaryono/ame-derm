@@ -1,28 +1,29 @@
-"""birnet_seg_bgff.py with two changes to align more closely with the
-reference hair-segmentation paper's setup, per explicit request to match
-its loss function before testing grayscale vs RGB on lesion segmentation:
+"""A version of birnet_seg_bgff.py carrying two adjustments that bring it
+closer to the reference hair-segmentation paper's setup, made in response
+to an explicit request to align the loss function before comparing
+grayscale against RGB for lesion segmentation:
 
-  1. Loss function replaced with the paper's own formulation:
+  1. The loss is swapped for the paper's own formulation:
        L1 = lambda1*BCE + lambda2*L_BD + lambda3*FocalTversky
        (lambda1=0.3, lambda2=0.1, lambda3=0.7; Tversky alpha=0.7, beta=0.3,
        focal gamma=0.75; L_BD = Dice computed on the Sobel boundary maps of
        prediction vs ground truth, not the full mask)
-     used for the whole run here (the paper switches to a second weighting
-     L2 in its stages 2-3; we keep one stage since our discriminative-LR
-     recipe already serves the "stabilize then adapt" role that multi-stage
-     schedule serves in the source paper).
-  2. --color_space {rgb,grayscale}: grayscale mode converts to single-channel
-     and replicates to 3 channels before the encoder (same approach the
-     source paper uses), so the same EfficientNet-B4 encoder architecture
-     applies unmodified.
+     and this single weighting drives the entire run (the paper moves on to
+     a second weighting L2 for its stages 2-3; we keep a single stage, since
+     our discriminative-LR recipe already fills the "stabilize then adapt"
+     role that the multi-stage schedule provides in the source paper).
+  2. --color_space {rgb,grayscale}: in grayscale mode the image is converted
+     to a single channel and replicated back to 3 channels ahead of the
+     encoder (the same trick the source paper uses), allowing the identical
+     EfficientNet-B4 encoder architecture to be applied unmodified.
 
-Not matched (impractical for this pipeline, noted explicitly rather than
-silently ignored): the paper's 512x512 input and 80+120+200-epoch three-
-stage schedule. This pipeline's resolution is fixed at 224x224 by the
-downstream classification models it must feed masks to, and single-stage
-discriminative-LR training already fixed a real overfitting/instability
-pattern observed earlier today -- reverting to the paper's LR schedule
-would reintroduce it.
+Deliberately not matched (impractical for this pipeline, and stated here
+rather than quietly dropped): the paper's 512x512 input together with its
+80+120+200-epoch three-stage schedule. This pipeline's resolution is fixed
+at 224x224 by the downstream classification models that must consume its
+masks, and single-stage discriminative-LR training already resolved a real
+overfitting/instability pattern seen earlier today -- going back to the
+paper's LR schedule would bring that pattern back.
 
 Usage:
     python birnet_seg_bgff_v2.py --color_space rgb
@@ -46,12 +47,13 @@ IMG_SIZE = 224
 BATCH_SIZE = 16
 MAX_EPOCHS = 60
 PATIENCE = 10
-LAMBDA1, LAMBDA2, LAMBDA3 = 0.3, 0.1, 0.7  # paper's L1 weights (BCE, boundary-Dice, Focal-Tversky)
+LAMBDA1, LAMBDA2, LAMBDA3 = 0.3, 0.1, 0.7  # the paper's L1 weights (BCE, boundary-Dice, Focal-Tversky)
 
 
 class FocalTverskyLoss(nn.Module):
-    """Paper's Tversky (alpha=0.7 penalizes FP more, beta=0.3) + focal
-    exponent gamma=0.75, matching its stated configuration exactly."""
+    """The paper's Tversky term (alpha=0.7, penalizing FP more; beta=0.3)
+    combined with a focal exponent gamma=0.75, exactly as its reported
+    configuration specifies."""
 
     def __init__(self, alpha=0.7, beta=0.3, gamma=0.75, smooth=1.0):
         super().__init__()
@@ -69,8 +71,8 @@ class FocalTverskyLoss(nn.Module):
 
 
 class BoundaryDiceLoss(nn.Module):
-    """L_BD: Dice loss computed on the Sobel boundary maps of prediction
-    vs ground truth, rather than on the full masks."""
+    """L_BD: a Dice loss evaluated over the Sobel boundary maps of the
+    prediction and the ground truth, instead of over the complete masks."""
 
     def __init__(self, smooth=1.0):
         super().__init__()
@@ -105,7 +107,7 @@ def load_and_preprocess_seg_v2(img_path, mask_path, img_size, color_space):
     img = cv2.resize(img, (img_size, img_size), interpolation=cv2.INTER_LINEAR)
     if color_space == "grayscale":
         gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-        img = np.stack([gray, gray, gray], axis=-1)  # replicate to 3ch, same as source paper
+        img = np.stack([gray, gray, gray], axis=-1)  # duplicated back to 3ch, matching the source paper
     mean = np.array([0.485, 0.456, 0.406]); std = np.array([0.229, 0.224, 0.225])
     img = (img.astype(np.float32) / 255.0 - mean) / std
     import os

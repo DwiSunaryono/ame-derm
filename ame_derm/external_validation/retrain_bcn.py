@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """STRATEGI 4 — RETRAIN PENUH framework BirNET di BCN20000 (fold-0 / split resmi).
 
-Filosofi: BirNET adalah FRAMEWORK, bukan model statis. Saat kohort baru tersedia
+Filosofi: BirNET ialah FRAMEWORK, bukan model statis. Ketika kohort baru muncul
 (rumah sakit / dataset baru), framework di-RETRAIN ulang dari backbone pretrained
-pada data lokal, bukan sekadar zero/few-shot adaptasi. Skrip ini membuktikan
+pada data lokal, tidak cuma zero/few-shot adaptasi. Skrip ini memperlihatkan
 headroom-nya: gen_pure + eksper torso/limb/head dilatih pada BCN train 100%,
-early-stop via BCN val, lalu dievaluasi di BCN test (makro-7) dgn protokol
+early-stop via BCN val, kemudian dievaluasi di BCN test (makro-7) dgn protokol
 IDENTIK champion (TTA 6-view, static 0.8, meta localization).
 
 Protokol perbandingan pada BCN test:
@@ -63,13 +63,13 @@ from ame_derm.moe_fusion.eval_moe_pure_champion import get_expert_name, build_ex
 
 BATCH_SIZE = 32
 CKPT_DIR = "BIRNet_Research/outputs/checkpoints/retrain_bcn"
-# Sekaligus meniru eksperimen dari birnet_retrain_bcn_lpft: supaya ckpt dari
-# img_mode berbeda (raw/crop/clean) TIDAK saling menimpa, pakai suffix via
-# env BCN_IMGMODE_SUFFIX. Kosong = nama asli (raw), jadi evaluasi raw lama
-# tetap valid.
+# Sekaligus meniru eksperimen dari birnet_retrain_bcn_lpft: agar ckpt dari
+# img_mode berbeda (raw/crop/clean) TIDAK saling menimpa, gunakan suffix via
+# env BCN_IMGMODE_SUFFIX. Kosong = nama asli (raw), sehingga evaluasi raw lama
+# tetap sah.
 BCN_SUFFIX = os.environ.get("BCN_IMGMODE_SUFFIX", "")
 _suf = f"_{BCN_SUFFIX}" if BCN_SUFFIX else ""
-BACKBONE = os.environ.get("BCN_BACKBONE", BACKBONE)  # override utk ensemble lintas-backbone
+BACKBONE = os.environ.get("BCN_BACKBONE", BACKBONE)  # override untuk ensemble lintas-backbone
 GEN_CKPT = os.path.join(CKPT_DIR, f"cls_{BACKBONE}_multimodal_fold0{_suf}_best.pth")
 EXP_CKPT = {
     "torso": os.path.join(CKPT_DIR, f"cls_{BACKBONE}_expert_torso_fold0{_suf}_best.pth"),
@@ -81,13 +81,13 @@ CLAHE_DIR = "BIRNet_Research/outputs/bcn_clahe"
 CROP_CLAHE_DIR = "BIRNet_Research/outputs/bcn_crop_clahe"
 JURA_DIR = "BIRNet_Research/outputs/bcn_jura_clahe_crop_bil"
 PIPE_BASE = "BIRNet_Research/outputs/bcn_pipe"
-# Champion HAM fold0 (backbone sama) — dipakai warm-start agar GEN retrained
-# memulai dari representasi HAM (mendekati HAM champion), bukan DINOv2 fresh.
+# Champion HAM fold0 (backbone sama) — dipakai warm-start supaya GEN retrained
+# berawal dari representasi HAM (mendekati HAM champion), bukan DINOv2 fresh.
 CHAMP_GEN_DIR = "BIRNet_Research/outputs/checkpoints/phase2_multimodal_ablation"
 CHAMP_EXP_DIR = "BIRNet_Research/outputs/checkpoints/phase2_multimodal"
 CHAMP_GEN_CKPT = os.path.join(
     CHAMP_GEN_DIR, f"cls_{BACKBONE}_multimodal_fold0_best.pth")
-CHAMP_GEN_CKPT = os.environ.get("BCN_WARM_CKPT", CHAMP_GEN_CKPT)  # override warm-start path per backbone
+CHAMP_GEN_CKPT = os.environ.get("BCN_WARM_CKPT", CHAMP_GEN_CKPT)  # override path warm-start per backbone
 CHAMP_EXP_CKPT = {
     "torso": os.path.join(CHAMP_EXP_DIR, f"cls_{BACKBONE}_expert_torso_fold0_best.pth"),
     "limb": os.path.join(CHAMP_EXP_DIR, f"cls_{BACKBONE}_expert_limb_fold0_best.pth"),
@@ -95,10 +95,10 @@ CHAMP_EXP_CKPT = {
 }
 
 
-# ── Dataset (path eksplisit — raw BCN / fallback crop) ─────────────────
+# ── Dataset (path eksplisit — raw BCN / cadangan crop) ─────────────────
 
 class RetrainBCNDataset(Dataset):
-    """SkinLesionDatasetMultimodal yg membaca path gambar EKSPLISIT (BCN)."""
+    """SkinLesionDatasetMultimodal yang membaca path gambar EKSPLISIT (BCN)."""
 
     def __init__(self, df, img_size, transform=None, oversample=False,
                  target_per_class=None, num_classes=7):
@@ -171,10 +171,10 @@ def make_loader(df, cfg, aug, shuffle=False, oversample=False):
                       pin_memory=True, drop_last=shuffle and len(ds) > BATCH_SIZE)
 
 
-# ── Build BCN dataframe (HAM-like format utk training) ────────────────
+# ── Susun dataframe BCN (format mirip-HAM utk training) ────────────────
 
 def build_bcn_df(img_mode="raw"):
-    """BCN seluruh split → df {image_id, img_path, label, localization, age, sex, dataset}."""
+    """Seluruh split BCN → df {image_id, img_path, label, localization, age, sex, dataset}."""
     df = pd.read_csv(BCN_CSV)
     df = df[df["diagnosis"].isin(EXT_TO_LABEL)].copy()
     df["label"] = df["diagnosis"].map(EXT_TO_LABEL)
@@ -218,7 +218,7 @@ def build_bcn_df(img_mode="raw"):
                              "localization": r["localization"], "age": r["age"],
                              "sex": r["sex"], "dataset": "bcn", "lesion_id": str(r["lesion_id"])})
         elif ">" in img_mode:
-            # pipeline generik: bcn_pipe/<op1>_<op2>_.../{image}
+            # pipeline umum: bcn_pipe/<op1>_<op2>_.../{image}
             pipe_dir = os.path.join(PIPE_BASE, img_mode.replace(">", "_"))
             pipe_p = os.path.join(pipe_dir, str(r["image"]))
             if os.path.exists(pipe_p):
@@ -234,7 +234,7 @@ def build_bcn_df(img_mode="raw"):
 
 
 def lesion_grouped_split(df, seed, n_splits=5):
-    """GANTI split BCN bawaan yg BOCOR (train∩test lesi=915). Lesion-grouped +
+    """PENGGANTI split BCN bawaan yg BOCOR (train∩test lesi=915). Lesion-grouped +
     stratified label: test=1 fold, val=1 fold dari sisa, sisanya train.
     Verifikasi 0 kebocoran lesi antar-split."""
     from sklearn.model_selection import StratifiedGroupKFold
@@ -256,7 +256,7 @@ def lesion_grouped_split(df, seed, n_splits=5):
     return train, val, test
 
 
-# ── Training loop (identik run_fold di train_specialist_expert) ──────
+# ── Loop training (identik run_fold di train_specialist_expert) ──────
 
 def train_retrained(train_df, val_df, test_df, tag, ckpt_path, cfg, args, init_ckpt=None):
     bf.set_deterministic(args.seed)
@@ -285,7 +285,7 @@ def train_retrained(train_df, val_df, test_df, tag, ckpt_path, cfg, args, init_c
             for k in [k for k in sd if "pos_embed" in k]:
                 sd.pop(k, None)
                 print(f"[warm-start] drop {k} (resolusi beda -> interpolasi DINOv2 dynamic_img_size)")
-        # drop key beda-bentuk (mis. head num_classes berbeda: refiner k-kelas vs champion 7)
+        # buang key beda-bentuk (mis. head num_classes berbeda: refiner k-kelas vs champion 7)
         msd = model.state_dict()
         shape_drop = [k for k in list(sd) if k in msd and sd[k].shape != msd[k].shape]
         for k in shape_drop:
@@ -404,7 +404,7 @@ def train_retrained(train_df, val_df, test_df, tag, ckpt_path, cfg, args, init_c
                 test_bal=float(test_bal), test_f1=float(test_f1), best_epoch=int(ck["epoch"]))
 
 
-# ── Evaluasi MoE retrained (protokol identik champion) ───────────────
+# ── Evaluasi MoE hasil retrain (protokol identik champion) ───────────────
 
 def eval_moe_retrained(test_df, cfg, args):
     set_active_meta_fields("localization")
@@ -441,7 +441,7 @@ def eval_moe_retrained(test_df, cfg, args):
                 probs_tta[m_name].extend((p_sum / len(views)).cpu().numpy())
     y = np.array(y)
     gen = np.array(probs_tta["gen_pure"])
-    exp = build_exp_arrays(probs_tta, test_df, head_ver="head")  # expert retrained disimpan key "head"
+    exp = build_exp_arrays(probs_tta, test_df, head_ver="head")  # expert hasil retrain disimpan dengan key "head"
 
     preds_gen = gen.argmax(1)
     preds_moe = (0.8 * exp + 0.2 * gen).argmax(1)
@@ -522,7 +522,7 @@ def main():
     bcn = build_bcn_df(args.img_mode)
     print(f"[BCN] terlabel={len(bcn)} img_mode={args.img_mode} "
           f"dist={bcn['label'].value_counts().sort_index().to_dict()}")
-    # split BCN bawaan BOCOR lesi (train∩test=915) -> pakai lesion-grouped
+    # split BCN bawaan BOCOR lesi (train∩test=915) -> gunakan lesion-grouped
     split_seed = args.seed if args.split_seed == 0 else args.split_seed
     train_df, val_df, test_df = lesion_grouped_split(bcn, split_seed)
     print(f"[lesion-grouped split, seed={split_seed}] "
@@ -542,7 +542,7 @@ def main():
         rare_ids = [int(x) for x in args.pool_rare.split(",")]
         srcs = tuple(s.strip() for s in args.pool_rare_src.split(","))
         ext = build_external_rare_df(rare_ids, srcs, cfg=cfg)
-        # ANTI-LEAK: lesion_id eksternal diberi prefix sumber -> pasti disjoint dari BCN test
+        # ANTI-LEAK: lesion_id eksternal memakai prefix sumber -> pasti disjoint dari BCN test
         test_les = set(test_df["lesion_id"].astype(str))
         assert set(ext["lesion_id"].astype(str)).isdisjoint(test_les), "LEAK: lesion eksternal di test!"
         before = len(train_df)
@@ -588,7 +588,7 @@ def main():
         else:
             print("[skip_gen] pakai GEN existing di GEN_CKPT (tanpa retrain GEN).")
 
-        # 2) Gate: GEN tidak menjanjikan -> stop sebelum expert (hemat 75%).
+        # 2) Gate: GEN kurang menjanjikan -> hentikan sebelum expert (hemat 75%).
         gen_f1 = results.get("gen", {}).get("test_f1")
         if (not args.gen_only and gen_f1 is not None
                 and args.gen_gate > 0 and gen_f1 < args.gen_gate):
@@ -620,7 +620,7 @@ def main():
             json.dump(results, open(args.out, "w"), indent=2)
             print(f"\nTraining results disimpan: {args.out}")
 
-    # 4) Evaluasi MoE retrained (skip saat gen_only)
+    # 4) Evaluasi MoE hasil retrain (dilewati saat gen_only)
     if args.gen_only:
         results["_config"] = {"seed": args.seed, "split_seed": split_seed, "img_mode": args.img_mode,
                               "max_epochs": args.max_epochs, "patience": args.patience,

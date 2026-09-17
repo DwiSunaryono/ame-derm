@@ -1,5 +1,6 @@
-"""Eval ablasi ABCD 4-grup dari checkpoint (fold-0 test, konsisten no-TTA).
-Setiap grup pakai mask ABCD sesuai training-nya. Bandingkan macro-F1 + per-kelas.
+"""Evaluasi ablasi ABCD 4-grup dari checkpoint (fold-0 test, konsisten tanpa TTA).
+Tiap grup memakai mask ABCD sesuai training-nya masing-masing. Bandingkan
+macro-F1 + per-kelas.
 """
 import os
 import numpy as np
@@ -8,7 +9,7 @@ from torch.utils.data import DataLoader
 from sklearn.metrics import f1_score
 
 from ame_derm.common import birnet_final as bf
-from ame_derm.abcd_ablation import train_multimodal_abcd as tabcd  # module-level: patch RAW + helper
+from ame_derm.abcd_ablation import train_multimodal_abcd as tabcd  # level modul: patch RAW + helper
 from ame_derm.abcd_ablation.train_multimodal_ablation import MultimodalClassifier
 from ame_derm.experts.train_classifier_phase2_final import CROP_DIR
 from ame_derm.data_splits.representative_val_split import stratified_ham_kfold_fully_representative

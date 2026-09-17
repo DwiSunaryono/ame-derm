@@ -3,14 +3,15 @@
 BIRNet: A Boundary Irregularity-Guided Cross-Attention Network for
 Joint Skin Lesion Segmentation and Classification.
 
-Revisi pasca-penolakan Medical Image Analysis (MEDIA-D-26-02004, alasan:
-novelty metodologis tidak cukup). Perubahan utama pada revisi ini: modul
-BIG diganti dari elementwise spatial gating menjadi genuine multi-head
-scaled dot-product cross-attention (lihat BIGCrossAttention), dan
-ditambahkan ablasi kontrol (placebo, oracle) untuk membuktikan gain
-performa berasal dari sinyal boundary irregularity, bukan sekadar
-tambahan kapasitas parameter. Modul gating generasi awal dipertahankan
-sebagai BIGGatingLegacy untuk perbandingan head-to-head.
+Revisi setelah penolakan Medical Image Analysis (MEDIA-D-26-02004, sebab:
+kebaruan metodologis dinilai kurang). Perubahan pokok di revisi ini:
+modul BIG tidak lagi memakai elementwise spatial gating, melainkan
+genuine multi-head scaled dot-product cross-attention (lihat
+BIGCrossAttention), ditambah ablasi kontrol (placebo, oracle) guna
+membuktikan bahwa kenaikan performa bersumber dari sinyal boundary
+irregularity, bukan semata tambahan kapasitas parameter. Modul gating
+generasi awal tetap dipertahankan sebagai BIGGatingLegacy untuk
+perbandingan head-to-head.
 
 Komponen utama:
     - Shared encoder EfficientNet-B4
@@ -28,15 +29,15 @@ Komponen utama:
           L_seg   = Dice + BCE + 0.5 * Tversky(alpha=0.3, beta=0.7)
           L_cls   = Label Smoothing Focal Loss (gamma=2.0, eps=0.1)
           L_bnd   = BCE(Sobel(pred_mask), Sobel(gt_mask))
-    - Threshold segmentasi optimal tau* = 0.78 (hasil grid search pada
+    - Ambang segmentasi optimal tau* = 0.78 (diperoleh dari grid search pada
       validation set ISIC 2018 Task1, dilaporkan di Bagian 3.4 paper)
-    - Ablasi C1-C8 (lihat ABLATION_CONFIGS): C1-C5 sesuai draft submission
-      MedIA, C6 (cross-attention baru), C7 (placebo, tanpa sinyal
-      irregularity), C8 (oracle, BIG diberi GT mask saat training sebagai
-      diagnostic upper-bound, TIDAK dipakai untuk angka final). Jalankan
-      lewat `python birnet_final.py --config C6`.
+    - Ablasi C1-C8 (lihat ABLATION_CONFIGS): C1-C5 mengikuti draft
+      submission MedIA, C6 (cross-attention baru), C7 (placebo, tanpa
+      sinyal irregularity), C8 (oracle, BIG menerima GT mask saat training
+      sebagai diagnostic upper-bound, TIDAK dipakai untuk angka final).
+      Dijalankan via `python birnet_final.py --config C6`.
 
-Dataset yang digunakan:
+Dataset yang dipakai:
     - HAM10000            : klasifikasi utama, split stratified 70/15/15 (seed 42)
     - ISIC 2018 Task1      : segmentasi utama, 2594/100/1000
     - ISIC 2016, ISIC 2017 : data tambahan untuk training segmentasi
@@ -44,13 +45,14 @@ Dataset yang digunakan:
     - ISIC 2018 Task3      : evaluasi cross-dataset (tidak overlap dengan training)
 
 Catatan penting:
-    - Semua random seed dikunci ke 42 untuk reproducibility.
-    - Oversampling dilakukan HANYA pada partisi training, dengan augmentasi
-      geometris (flip + rotasi), bukan SMOTE/ADASYN (paper menunjukkan
-      augmentation-based oversampling mengungguli keduanya). Bisa
-      dimatikan lewat toggle use_oversampling pada config ablasi.
-    - Arsitektur pencarian sebelumnya (hybrid U-Net-EfficientNet ensemble)
-      TIDAK digunakan di sini karena telah ditinggalkan dalam riset ini.
+    - Seluruh random seed dipatok ke 42 demi reproducibility.
+    - Oversampling dijalankan HANYA pada partisi training, memakai
+      augmentasi geometris (flip + rotasi), bukan SMOTE/ADASYN (paper
+      memperlihatkan augmentation-based oversampling lebih unggul dari
+      keduanya). Dapat dimatikan melalui toggle use_oversampling pada
+      config ablasi.
+    - Arsitektur pencarian terdahulu (hybrid U-Net-EfficientNet ensemble)
+      TIDAK dipakai di sini sebab sudah ditinggalkan dalam riset ini.
 """
 
 import os
@@ -112,7 +114,7 @@ def set_deterministic(seed: int):
 
 @dataclass
 class Config:
-    # Path dasar (sesuaikan dengan lokasi dataset)
+    # Path dasar (silakan sesuaikan dengan lokasi dataset)
     base_dir: str = "./BIRNet_Research"
     dataset_dir: str = field(init=False)
     output_dir: str = field(init=False)
@@ -149,7 +151,7 @@ class Config:
     seg_weight_decay: float = 1e-4
     seg_max_epochs: int = 80
     seg_patience: int = 15
-    seg_threshold: float = 0.78  # tau*, hasil grid search validasi ISIC 2018 Task1
+    seg_threshold: float = 0.78  # tau*, diperoleh dari grid search validasi ISIC 2018 Task1
 
     # Scheduler
     scheduler_t0: int = 20
@@ -161,7 +163,7 @@ class Config:
     lambda_boundary: float = 0.10
 
     # BIG module
-    big_alpha: float = 1.0          # dipakai hanya oleh varian "gating" (legacy)
+    big_alpha: float = 1.0          # hanya dipakai oleh varian "gating" (legacy)
     big_window: int = 9
     big_variant: str = "crossattn"  # none | gating | crossattn | placebo | oracle
 
@@ -173,13 +175,13 @@ class Config:
     tversky_alpha: float = 0.3
     tversky_beta: float = 0.7
 
-    # Toggle komponen ablasi (lihat ABLATION_CONFIGS, config C1-C8)
+    # Saklar komponen ablasi (lihat ABLATION_CONFIGS, config C1-C8)
     use_boundary_loss: bool = True
     use_label_smoothing: bool = True
     use_oversampling: bool = True
 
-    # Nama config ablasi aktif, dipakai untuk memisahkan checkpoint/log
-    # antar-run supaya tidak saling menimpa saat menjalankan C1..C8
+    # Nama config ablasi yang aktif, dipakai memisahkan checkpoint/log
+    # antar-run agar tidak saling menimpa ketika menjalankan C1..C8
     config_name: str = "C6"
 
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
@@ -206,20 +208,22 @@ def set_seed(seed: int):
 # 1b. KONFIGURASI ABLASI (C1-C8)
 # ======================================================================
 #
-# C1-C5 sesuai Tabel 7 pada draft submission MedIA. C6-C8 adalah ablasi
-# tambahan untuk memperkuat klaim novelty pada revisi:
-#   C6 - BIGCrossAttention menggantikan BIGGatingLegacy sebagai modul utama
-#        (cross-attention Q/K/V genuine, bukan elementwise gating).
-#   C7 - "placebo": arsitektur cross-attention identik dengan C6, tapi
-#        Query dikosongkan (tanpa sinyal irregularity). Mengisolasi apakah
-#        gain performa berasal dari sinyal boundary irregularity itu
-#        sendiri, atau hanya dari tambahan kapasitas attention.
-#   C8 - "oracle": BIG menerima GT mask (bukan mask prediksi) saat
-#        training/diagnostic eval. Mengisolasi seberapa besar performa
-#        C6 dibatasi oleh kualitas mask segmentasi yang diprediksi.
-#        HANYA untuk diagnostic run, tidak pernah dipakai sebagai angka
-#        akhir yang dilaporkan (memakai GT test set = bukan kondisi
-#        deployment nyata).
+# C1-C5 mengikuti Tabel 7 di draft submission MedIA. C6-C8 merupakan
+# ablasi tambahan guna memperkuat klaim kebaruan pada revisi:
+#   C6 - BIGCrossAttention dipakai sebagai modul utama menggantikan
+#        BIGGatingLegacy (cross-attention Q/K/V genuine, bukan
+#        elementwise gating).
+#   C7 - "placebo": arsitektur cross-attention sama persis dengan C6,
+#        namun Query dibiarkan kosong (tanpa sinyal irregularity). Ini
+#        memisahkan apakah kenaikan performa bersumber dari sinyal
+#        boundary irregularity itu sendiri, atau hanya dari tambahan
+#        kapasitas attention.
+#   C8 - "oracle": saat training/diagnostic eval, BIG menerima GT mask
+#        (bukan mask prediksi). Ini memisahkan sejauh mana performa C6
+#        dibatasi oleh kualitas mask segmentasi hasil prediksi. HANYA
+#        untuk diagnostic run, tidak pernah menjadi angka akhir yang
+#        dilaporkan (memakai GT test set = bukan kondisi deployment
+#        nyata).
 ABLATION_CONFIGS: Dict[str, Dict[str, object]] = {
     "C1": dict(big_variant="none",      use_boundary_loss=False, use_label_smoothing=False, use_oversampling=False),
     "C2": dict(big_variant="none",      use_boundary_loss=False, use_label_smoothing=False, use_oversampling=True),
@@ -233,9 +237,9 @@ ABLATION_CONFIGS: Dict[str, Dict[str, object]] = {
 
 
 def apply_ablation_config(cfg: Config, config_name: str) -> Config:
-    """Menerapkan salah satu preset ABLATION_CONFIGS ke sebuah Config,
-    termasuk mengarahkan ulang ckpt_dir/log_dir supaya tiap config
-    ablasi punya direktori output sendiri (tidak saling menimpa)."""
+    """Memasang salah satu preset dari ABLATION_CONFIGS pada sebuah Config,
+    sekaligus mengarahkan ulang ckpt_dir/log_dir agar setiap config ablasi
+    memperoleh direktori output sendiri (tidak saling menimpa)."""
     if config_name not in ABLATION_CONFIGS:
         raise ValueError(f"Config ablasi tidak dikenal: {config_name}. Pilihan: {list(ABLATION_CONFIGS)}")
     opts = ABLATION_CONFIGS[config_name]
@@ -244,7 +248,7 @@ def apply_ablation_config(cfg: Config, config_name: str) -> Config:
     cfg.use_label_smoothing = opts["use_label_smoothing"]
     cfg.use_oversampling = opts["use_oversampling"]
     cfg.config_name = config_name
-    cfg.__post_init__()  # rebuild ckpt_dir/log_dir dengan config_name baru
+    cfg.__post_init__()  # bangun ulang ckpt_dir/log_dir dengan config_name yang baru
     return cfg
 
 
@@ -253,7 +257,7 @@ def apply_ablation_config(cfg: Config, config_name: str) -> Config:
 # ======================================================================
 
 class DatasetPaths:
-    """Kumpulan path ke seluruh dataset yang digunakan pada paper."""
+    """Himpunan path untuk semua dataset yang dipakai pada paper."""
 
     def __init__(self, cfg: Config):
         d = cfg.dataset_dir
@@ -294,21 +298,23 @@ class DatasetPaths:
 # ======================================================================
 
 def build_augmentations(img_size: int, seed: int = None):
-    """Augmentasi training & validasi sesuai Bagian 3.2 paper (CLAHE,
-    bilateral filter dilakukan terpisah di load_and_preprocess_image;
-    di sini hanya augmentasi geometris/warna standar).
+    """Augmentasi untuk training & validasi mengikuti Bagian 3.2 paper
+    (CLAHE dan bilateral filter ditangani terpisah di
+    load_and_preprocess_image; di sini cuma augmentasi geometris/warna
+    standar).
 
-    NOTE on reproducibility: albumentations>=2.0 uses its OWN internal RNG
-    (np.random.default_rng(seed) + random.Random(seed) inside
-    BasicTransform.set_random_seed / A.Compose's `seed` kwarg) -- it is
-    COMPLETELY INDEPENDENT of the global torch.manual_seed()/np.random.seed()
-    calls scripts make. Verified empirically: two separate processes with
-    identical torch/numpy seeding but no `seed=` passed here produced
-    DIFFERENT augmented outputs for the same input. Callers that need true
-    run-to-run reproducibility (e.g. multi-seed verification experiments)
-    MUST pass their --seed argument through here; existing callers that
-    don't pass a seed keep the previous (non-reproducible-augmentation)
-    behavior unchanged."""
+    NOTE on reproducibility: albumentations>=2.0 memakai RNG internalnya
+    sendiri (np.random.default_rng(seed) + random.Random(seed) di dalam
+    BasicTransform.set_random_seed / kwarg `seed` pada A.Compose) -- sama
+    sekali TIDAK bergantung pada pemanggilan global
+    torch.manual_seed()/np.random.seed() yang dilakukan skrip. Terverifikasi
+    secara empiris: dua proses terpisah dengan seeding torch/numpy identik
+    tetapi tanpa `seed=` yang diteruskan ke sini menghasilkan output
+    augmentasi BERBEDA untuk input yang sama. Pemanggil yang menuntut
+    reprodusibilitas antar-run sungguhan (mis. eksperimen verifikasi
+    multi-seed) WAJIB meneruskan argumen --seed-nya lewat sini; pemanggil
+    lama yang tidak mengirim seed tetap mempertahankan perilaku
+    (augmentasi non-reproducible) seperti sebelumnya."""
 
     train_aug = A.Compose([
         A.Resize(img_size, img_size),
@@ -330,7 +336,7 @@ def build_augmentations(img_size: int, seed: int = None):
 
 
 def load_and_preprocess_image(path: str, img_size: int) -> np.ndarray:
-    """CLAHE (LAB space) + bilateral filtering, sesuai Bagian 3.2."""
+    """CLAHE (ruang LAB) + bilateral filtering, mengikuti Bagian 3.2."""
     ext = os.path.splitext(path)[-1].lower()
     if ext == ".bmp":
         img = cv2.imread(path)
@@ -362,8 +368,9 @@ def load_mask(path: Optional[str], img_size: int) -> np.ndarray:
 
 def augment_oversample(img: np.ndarray, mask: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """Oversampling berbasis augmentasi geometris (flip + rotasi 90 derajat
-    kelipatan), sesuai Bagian 3.3. Terbukti mengungguli SMOTE/ADASYN karena
-    mempertahankan tekstur spasial dan morfologi batas lesi."""
+    kelipatan), mengikuti Bagian 3.3. Terbukti lebih unggul daripada
+    SMOTE/ADASYN sebab tekstur spasial dan morfologi batas lesi tetap
+    terjaga."""
     if np.random.rand() > 0.5:
         img = cv2.flip(img, 1)
         mask = cv2.flip(mask, 1)
@@ -404,7 +411,7 @@ def build_ham10000_dataframe(paths: DatasetPaths) -> pd.DataFrame:
 
 
 def build_isic_task3_dataframe(paths: DatasetPaths) -> pd.DataFrame:
-    """Digunakan hanya untuk evaluasi cross-dataset (tidak untuk training)."""
+    """Hanya dipakai untuk evaluasi cross-dataset (bukan untuk training)."""
     df = pd.read_csv(paths.isic_t3_train_csv)
     df["label"] = df[ISIC_T3_COLS].values.argmax(axis=1)
     df["img_path"] = df["image"].apply(
@@ -418,7 +425,7 @@ def build_isic_task3_dataframe(paths: DatasetPaths) -> pd.DataFrame:
 def build_seg_dataframe(img_dir: str, mask_dir: str,
                          img_ext: str = ".jpg",
                          mask_suffix: str = "_segmentation.png") -> pd.DataFrame:
-    """Dataframe generik untuk dataset segmentasi (ISIC Task1/2016/2017)."""
+    """Dataframe generik bagi dataset segmentasi (ISIC Task1/2016/2017)."""
     rows = []
     for fname in sorted(os.listdir(img_dir)):
         if not fname.endswith(img_ext):
@@ -435,8 +442,8 @@ def build_seg_dataframe(img_dir: str, mask_dir: str,
 
 
 def build_ph2_dataframe(paths: DatasetPaths) -> pd.DataFrame:
-    """PH2 hanya dipakai sebagai data tambahan segmentasi, label kelas
-    tidak digunakan di jalur training utama."""
+    """PH2 cuma dipakai sebagai data tambahan segmentasi; label kelas tidak
+    dipakai di jalur training utama."""
     records = []
     for img_id in sorted(os.listdir(paths.ph2_root)):
         if not img_id.startswith("IMD"):
@@ -449,18 +456,18 @@ def build_ph2_dataframe(paths: DatasetPaths) -> pd.DataFrame:
 
 
 def stratified_ham_split(df: pd.DataFrame, cfg: Config):
-    """Split stratified ~70/15/15 dengan seed tetap, di-grup per lesion_id
-    agar tidak ada lesion yang muncul di lebih dari satu split.
+    """Split stratified ~70/15/15 dengan seed tetap, dikelompokkan per
+    lesion_id supaya tak ada lesion yang tampil di lebih dari satu split.
 
-    REVISI (post-audit): versi sebelumnya (train_test_split biasa, stratified
-    by class tapi TIDAK di-grup per lesion) terbukti bocor -- 34.8% gambar
-    test dan 36.1% gambar val berbagi lesion_id dengan gambar training,
-    karena 1,956 dari 7,470 lesion unik di HAM10000 punya lebih dari satu
-    foto (hingga 6). StratifiedGroupKFold menahan constraint kelompok
-    (lesion_id) sekaligus menjaga proporsi kelas sedekat mungkin. Rasio
-    70/15/15 menjadi ~71.4/14.3/14.3 akibat constraint kelompok; ini
-    diverifikasi menghasilkan nol overlap lesion_id lintas split (lihat
-    fix_lesion_grouped_split.py)."""
+    REVISI (post-audit): versi sebelumnya (train_test_split biasa,
+    stratified per class tetapi TIDAK dikelompokkan per lesion) ternyata
+    bocor -- 34.8% gambar test dan 36.1% gambar val berbagi lesion_id
+    dengan gambar training, sebab 1,956 dari 7,470 lesion unik di HAM10000
+    memiliki lebih dari satu foto (sampai 6). StratifiedGroupKFold
+    mempertahankan constraint kelompok (lesion_id) sambil menjaga proporsi
+    kelas sedekat mungkin. Akibat constraint kelompok, rasio 70/15/15 jadi
+    ~71.4/14.3/14.3; ini diverifikasi menghasilkan nol overlap lesion_id
+    antar split (lihat fix_lesion_grouped_split.py)."""
     idx = np.arange(len(df))
     labels = df["label"].values
     groups = df["lesion_id"].values
@@ -488,27 +495,30 @@ def stratified_ham_split(df: pd.DataFrame, cfg: Config):
 
 
 def stratified_ham_kfold(df: pd.DataFrame, cfg: Config, n_splits: int = 5):
-    """Proper lesion-grouped K-fold cross-validation: yields (fold_i, train_idx,
-    val_idx, test_idx) for EVERY fold, so a model's performance is measured by
-    averaging across n_splits genuinely different data partitions -- not by
-    retraining the SAME fixed partition with different random seeds.
+    """K-fold cross-validation dengan pengelompokan lesion yang benar:
+    menghasilkan (fold_i, train_idx, val_idx, test_idx) untuk SETIAP fold,
+    sehingga performa model diukur dengan merata-ratakan n_splits partisi
+    data yang betul-betul berbeda -- bukan dengan melatih ulang partisi
+    tetap yang SAMA memakai seed acak berbeda.
 
-    Rationale (raised directly by the user): stratified_ham_split() above
-    only ever uses fold 0 of a StratifiedGroupKFold(n_splits=7) split,
-    discarding the other 6 folds forever. That one ~14.3% test slice could
-    be a "lucky" or "unlucky" partition -- we never found out, because we
-    never looked at the other 6. Multi-seed testing (this project's earlier
-    approach) retrains the SAME lucky-or-unlucky fixed test set repeatedly
-    with different initializations -- it addresses TRAINING stochasticity,
-    not DATA-PARTITION variance, which is the more fundamental question when
-    the dataset has severely underrepresented classes (df=115, vasc=142
-    total images). K-fold directly attacks that: across all n_splits folds,
-    every single image is used as test exactly once, so the averaged metric
-    reflects the WHOLE dataset's difficulty, not one arbitrary slice of it.
+    Alasan (disampaikan langsung oleh user): stratified_ham_split() di atas
+    cuma memakai fold 0 dari split StratifiedGroupKFold(n_splits=7) dan
+    membuang 6 fold sisanya untuk selamanya. Satu potongan test ~14.3% itu
+    bisa jadi partisi yang "beruntung" atau "sial" -- kita tak pernah tahu,
+    sebab 6 fold lain tak pernah dilihat. Pengujian multi-seed (pendekatan
+    awal proyek ini) melatih ulang test set tetap yang beruntung-atau-sial
+    itu berkali-kali dengan inisialisasi berbeda -- yang ditangani adalah
+    stochasticity TRAINING, bukan variance PARTISI DATA, padahal itu
+    pertanyaan yang lebih mendasar ketika dataset punya kelas yang sangat
+    underrepresented (df=115, vasc=142 total gambar). K-fold menyerang hal
+    itu secara langsung: di seluruh n_splits fold, tiap gambar dipakai
+    sebagai test tepat satu kali, jadi metrik hasil rata-rata mencerminkan
+    tingkat kesulitan SELURUH dataset, bukan satu potongan sembarang.
 
-    Each fold still carves its own val set out of the fold's train portion
-    (for early stopping), using the same StratifiedGroupKFold(n_splits=6)
-    approach as stratified_ham_split, and the same zero-leakage assertions.
+    Tiap fold tetap menyisihkan val set-nya sendiri dari porsi train fold
+    tersebut (untuk early stopping), memakai pendekatan
+    StratifiedGroupKFold(n_splits=6) yang sama seperti stratified_ham_split,
+    plus assertion zero-leakage yang sama.
     """
     idx = np.arange(len(df))
     labels = df["label"].values
@@ -540,8 +550,8 @@ def stratified_ham_kfold(df: pd.DataFrame, cfg: Config, n_splits: int = 5):
 # ======================================================================
 
 class SkinLesionDataset(Dataset):
-    """Dataset umum untuk gambar + mask + label, dengan preprocessing
-    dan augmentasi dilakukan on-the-fly (tidak di-cache ke RAM/disk)."""
+    """Dataset umum bagi gambar + mask + label; preprocessing serta
+    augmentasi dijalankan on-the-fly (tidak di-cache ke RAM/disk)."""
 
     def __init__(self, df: pd.DataFrame, img_size: int,
                  transform=None, oversample: bool = False,
@@ -563,9 +573,9 @@ class SkinLesionDataset(Dataset):
 
     @staticmethod
     def _build_oversampled_index(entries, target_per_class, num_classes):
-        """Membentuk indeks entri dengan augmentasi flag, bukan menyalin
-        gambar penuh ke memori. Setiap entri tambahan ditandai augment=True
-        agar __getitem__ menerapkan augmentasi oversampling secara on-the-fly."""
+        """Menyusun indeks entri berikut flag augmentasi, alih-alih menyalin
+        gambar utuh ke memori. Tiap entri tambahan diberi tanda augment=True
+        supaya __getitem__ menerapkan augmentasi oversampling secara on-the-fly."""
         by_class = {c: [] for c in range(num_classes)}
         for i, (img_p, mask_p, label) in enumerate(entries):
             if label is not None and label >= 0:
@@ -628,9 +638,9 @@ def make_loader(dataset: Dataset, batch_size: int, shuffle: bool,
 # ======================================================================
 
 class ASPPLite(nn.Module):
-    """Modul ASPP ringan yang digunakan pada bottleneck sebelum decoder
-    segmentasi, untuk memperluas receptive field tanpa menambah parameter
-    secara berlebihan."""
+    """Modul ASPP ringan yang dipasang pada bottleneck sebelum decoder
+    segmentasi, guna melebarkan receptive field tanpa lonjakan parameter
+    yang berlebihan."""
 
     def __init__(self, in_channels: int, out_channels: int = 256):
         super().__init__()
@@ -688,8 +698,8 @@ class SpatialAttention(nn.Module):
 
 
 class CBAM(nn.Module):
-    """Convolutional Block Attention Module (Woo et al., 2018), digunakan
-    sebagai head klasifikasi sesuai Bagian 3.4 paper."""
+    """Convolutional Block Attention Module (Woo et al., 2018), dipakai
+    sebagai head klasifikasi mengikuti Bagian 3.4 paper."""
 
     def __init__(self, in_channels: int, ratio: int = 16):
         super().__init__()
@@ -702,12 +712,12 @@ class CBAM(nn.Module):
 
 class _SobelIrregularityMixin:
     """Ekstraksi irregularity map dari mask segmentasi (Sobel + local
-    variance window w, normalisasi min-max), dipakai bersama oleh
-    BIGGatingLegacy dan BIGCrossAttention. Bagian ini adalah geometric
-    prior yang tetap (non-learnable) dan menjadi dasar operasionalisasi
-    komponen Border pada aturan klinis ABCD; dipertahankan di kedua
-    varian modul karena juga dipakai untuk visualisasi interpretability
-    (Grad-CAM overlay, Fig. 7 paper)."""
+    variance window w, normalisasi min-max), yang dipakai bersama oleh
+    BIGGatingLegacy dan BIGCrossAttention. Bagian ini merupakan geometric
+    prior tetap (non-learnable) dan jadi dasar operasionalisasi komponen
+    Border pada aturan klinis ABCD; dipertahankan di kedua varian modul
+    sebab turut dipakai untuk visualisasi interpretability (Grad-CAM
+    overlay, Fig. 7 paper)."""
 
     def _make_sobel_buffers(self):
         sobel_x = torch.tensor([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], dtype=torch.float32).view(1, 1, 3, 3)
@@ -716,7 +726,7 @@ class _SobelIrregularityMixin:
         self.register_buffer("sobel_y", sobel_y)
 
     def extract_irregularity(self, seg_mask: torch.Tensor) -> torch.Tensor:
-        """Persamaan 2: E = sqrt((Kx * M)^2 + (Ky * M)^2), lalu local
+        """Persamaan 2: E = sqrt((Kx * M)^2 + (Ky * M)^2), kemudian local
         variance pada window w dan normalisasi min-max ke [0, 1]."""
         gx = F.conv2d(seg_mask, self.sobel_x, padding=1)
         gy = F.conv2d(seg_mask, self.sobel_y, padding=1)
@@ -735,11 +745,11 @@ class _SobelIrregularityMixin:
 
 class BIGGatingLegacy(nn.Module, _SobelIrregularityMixin):
     """Modul BIG generasi awal (spatial gating elementwise), dipertahankan
-    sebagai baseline ablasi (config C5) untuk pembanding langsung terhadap
-    BIGCrossAttention (config C6). BUKAN lagi modul utama BIRNet: ini
-    secara arsitektural adalah gating, bukan cross-attention beneran (tidak
-    ada query-key-value / softmax antar posisi spasial), yang menjadi salah
-    satu titik lemah novelty pada draft submission MedIA sebelumnya.
+    sebagai baseline ablasi (config C5) demi pembanding langsung dengan
+    BIGCrossAttention (config C6). Ini BUKAN modul utama BIRNet lagi:
+    secara arsitektural ia gating, bukan cross-attention sungguhan (tak ada
+    query-key-value / softmax antar posisi spasial), dan itulah salah satu
+    titik lemah kebaruan pada draft submission MedIA sebelumnya.
 
         F'_cls = F_cls (dot) (1 + alpha * I_tilde)"""
 
@@ -760,7 +770,7 @@ class BIGGatingLegacy(nn.Module, _SobelIrregularityMixin):
         mask_resized = F.interpolate(seg_mask, size=(h, w), mode="bilinear", align_corners=False)
 
         irregularity = self.extract_irregularity(mask_resized)
-        attn_map = self.irr_proj(irregularity)  # proyeksi ke [0,1] per posisi spasial
+        attn_map = self.irr_proj(irregularity)  # proyeksi ke rentang [0,1] per posisi spasial
 
         modulated = cls_feat * (1.0 + self.alpha * attn_map)
         return modulated, irregularity
@@ -768,27 +778,27 @@ class BIGGatingLegacy(nn.Module, _SobelIrregularityMixin):
 
 class BIGCrossAttention(nn.Module, _SobelIrregularityMixin):
     """Modul cross-attention BIG generasi baru (Boundary Irregularity-
-    Guided), inti novelty revisi paper. Berbeda dari BIGGatingLegacy, modul
-    ini adalah genuine scaled dot-product multi-head cross-attention: peta
-    irregularity geometris (Sobel + local variance, w=9) di-encode menjadi
-    Query, sementara classification bottleneck feature menyediakan Key dan
-    Value. Informasi dipertukarkan lintas seluruh posisi spasial (bukan
-    hanya gating posisi-per-posisi), dengan residual connection berskala
-    learnable gamma (init 0, gaya non-local block / SAGAN) agar training
-    stabil sejak awal:
+    Guided), inti kebaruan revisi paper. Tak seperti BIGGatingLegacy,
+    modul ini merupakan genuine scaled dot-product multi-head
+    cross-attention: peta irregularity geometris (Sobel + local variance,
+    w=9) di-encode menjadi Query, sedangkan classification bottleneck
+    feature menyediakan Key dan Value. Informasi dipertukarkan melintasi
+    seluruh posisi spasial (bukan sekadar gating posisi-per-posisi),
+    dilengkapi residual connection berskala learnable gamma (init 0, gaya
+    non-local block / SAGAN) supaya training stabil sejak awal:
 
         Q = W_q(Encode(I_tilde)),  K = W_k(F_cls),  V = W_v(F_cls)
         Attn = softmax(Q^T K / sqrt(d_head))
         F'_cls = F_cls + gamma * W_o(Attn V)
 
     Parameter `variant`:
-        - "crossattn": Query berasal dari irregularity map asli (peta
+        - "crossattn": Query diambil dari irregularity map asli (peta
           nyata dari mask yang diprediksi).
-        - "placebo": Query berasal dari peta nol (tanpa sinyal
-          irregularity), dipakai sebagai ablasi kontrol (config C7) untuk
-          mengisolasi apakah gain performa berasal dari sinyal boundary
-          irregularity itu sendiri, atau hanya dari kapasitas attention
-          tambahan yang mirip secara parameter."""
+        - "placebo": Query diambil dari peta nol (tanpa sinyal
+          irregularity), berperan sebagai ablasi kontrol (config C7) guna
+          memisahkan apakah kenaikan performa berasal dari sinyal boundary
+          irregularity itu sendiri, atau semata dari kapasitas attention
+          tambahan yang serupa secara parameter."""
 
     def __init__(self, feat_channels: int, window: int = 9,
                  attn_dim: int = 64, num_heads: int = 4, variant: str = "crossattn",
@@ -814,14 +824,14 @@ class BIGCrossAttention(nn.Module, _SobelIrregularityMixin):
         self.v_proj = nn.Conv2d(feat_channels, attn_dim, 1)
         self.out_proj = nn.Conv2d(attn_dim, feat_channels, 1)
         self.gamma = nn.Parameter(torch.zeros(1))
-        # Regularisasi tambahan: attention branch (Q/K/V/out_proj) menambah
-        # kapasitas parameter cukup besar dibanding BIGGatingLegacy. Tanpa
-        # dropout, gradien dari cabang ini (walau gamma kecil) berpotensi
+        # Regularisasi ekstra: cabang attention (Q/K/V/out_proj) menambah
+        # kapasitas parameter yang cukup besar dibanding BIGGatingLegacy.
+        # Tanpa dropout, gradien dari cabang ini (meski gamma kecil) bisa
         # membuat fitur bottleneck bersama overfit ke HAM10000 train set
         # (gap train_acc~87% vs val_acc~73% teramati pada C6/C7 sebelum
-        # perubahan ini). attn_dropout meniru dropout attention-weight gaya
-        # Transformer standar; proj_dropout meregularisasi output sebelum
-        # digabung lewat residual.
+        # perubahan ini). attn_dropout meniru dropout attention-weight
+        # standar gaya Transformer; proj_dropout meregularisasi output
+        # sebelum digabung melalui residual.
         self.attn_dropout = nn.Dropout(attn_dropout)
         self.proj_dropout = nn.Dropout(proj_dropout)
 
@@ -852,7 +862,7 @@ class BIGCrossAttention(nn.Module, _SobelIrregularityMixin):
 
 class SegDecoder(nn.Module):
     """Decoder segmentasi bergaya UNet++ (nested skip connections) dengan
-    ASPP-lite pada bottleneck, sesuai Bagian 3.4 paper."""
+    ASPP-lite di bottleneck, mengikuti Bagian 3.4 paper."""
 
     def __init__(self, skip1_ch: int, skip2_ch: int, bottleneck_ch: int, aspp_out: int = 256):
         super().__init__()
@@ -882,17 +892,17 @@ BIG_VARIANTS = ("none", "gating", "crossattn", "placebo", "oracle")
 
 
 class BIRNet(nn.Module):
-    """Model BIRNet lengkap: shared EfficientNet-B4 encoder, decoder
-    segmentasi UNet++, head klasifikasi CBAM, dan modul BIG yang
-    menghubungkan kedua cabang dalam satu forward pass.
+    """Model BIRNet selengkapnya: shared EfficientNet-B4 encoder, decoder
+    segmentasi UNet++, head klasifikasi CBAM, serta modul BIG yang
+    menyambungkan kedua cabang dalam satu forward pass.
 
-    `big_variant` mengontrol varian modul BIG yang dipakai (dipetakan ke
-    config ablasi C1-C8 lewat ABLATION_CONFIGS):
+    `big_variant` menentukan varian modul BIG yang dipakai (dipetakan ke
+    config ablasi C1-C8 melalui ABLATION_CONFIGS):
         - "none"      : tanpa modul BIG sama sekali (C1-C4)
         - "gating"     : BIGGatingLegacy, modul gating generasi awal (C5)
         - "crossattn"  : BIGCrossAttention, modul cross-attention baru (C6)
         - "placebo"    : BIGCrossAttention dengan Query dikosongkan (C7)
-        - "oracle"     : BIGCrossAttention diberi GT mask alih-alih mask
+        - "oracle"     : BIGCrossAttention menerima GT mask alih-alih mask
                           prediksi saat forward (C8, hanya diagnostic run,
                           lihat parameter `gt_mask` pada forward())."""
 
@@ -921,7 +931,7 @@ class BIRNet(nn.Module):
             self.big_attention = BIGGatingLegacy(bottleneck_ch, alpha=big_alpha, window=big_window)
         elif big_variant == "placebo":
             self.big_attention = BIGCrossAttention(bottleneck_ch, window=big_window, variant="placebo")
-        else:  # "crossattn" atau "oracle" keduanya pakai modul cross-attention penuh
+        else:  # "crossattn" maupun "oracle" sama-sama memakai modul cross-attention penuh
             self.big_attention = BIGCrossAttention(bottleneck_ch, window=big_window, variant="crossattn")
 
         self.cbam = CBAM(bottleneck_ch)
@@ -936,10 +946,10 @@ class BIRNet(nn.Module):
         )
 
     def forward(self, x, gt_mask: Optional[torch.Tensor] = None):
-        """`gt_mask` hanya dipakai ketika big_variant=="oracle" (ablasi C8,
-        upper-bound diagnostic): BIG menerima mask ground-truth alih-alih
-        mask prediksi. Untuk semua varian lain, argumen ini diabaikan.
-        Tidak pernah dipakai untuk angka evaluasi final/deployment."""
+        """`gt_mask` cuma dipakai saat big_variant=="oracle" (ablasi C8,
+        upper-bound diagnostic): BIG menerima mask ground-truth, bukan mask
+        prediksi. Untuk varian lain, argumen ini diabaikan. Tidak pernah
+        dipakai untuk angka evaluasi final/deployment."""
         skip1, skip2, bottleneck = self.encoder(x)
 
         seg_logits = self.seg_decoder(bottleneck, skip2, skip1)
@@ -978,8 +988,8 @@ class DiceLoss(nn.Module):
 
 
 class TverskyLoss(nn.Module):
-    """Persamaan 6 paper: alpha_T=0.3, beta_T=0.7, memberi penalti lebih
-    besar pada false negative (secara klinis lebih berisiko)."""
+    """Persamaan 6 paper: alpha_T=0.3, beta_T=0.7, memberikan penalti
+    lebih besar untuk false negative (lebih berisiko secara klinis)."""
 
     def __init__(self, alpha: float = 0.3, beta: float = 0.7, smooth: float = 1.0):
         super().__init__()
@@ -997,7 +1007,7 @@ class TverskyLoss(nn.Module):
 
 
 class BoundaryLoss(nn.Module):
-    """BCE antara boundary Sobel dari mask prediksi dan mask ground truth."""
+    """BCE antara boundary Sobel dari mask prediksi dengan mask ground truth."""
 
     def __init__(self):
         super().__init__()
@@ -1032,24 +1042,25 @@ class SegmentationLoss(nn.Module):
 
 
 def compute_inverse_freq_weights(labels: np.ndarray, num_classes: int = 7) -> torch.Tensor:
-    """Inverse-frequency class weights (normalized to mean=1) from the
-    TRAINING portion of a fold, for LabelSmoothingFocalLoss's `weight` arg
-    -- previously always None despite being fully wired into the loss.
-    Rationale: macro-F1 (unlike balanced accuracy) penalizes precision loss
-    from a class being over-predicted at another's expense (diagnosed in
-    birnet_diagnose_pooled_bcn.py); down-weighting the loss contribution of
-    already-abundant classes (nv, mel) relative to rare ones (df, vasc)
-    discourages that over-prediction pattern instead of just measuring it
-    after the fact."""
+    """Inverse-frequency class weights (dinormalisasi ke mean=1) yang
+    dihitung dari porsi TRAINING sebuah fold, untuk argumen `weight` pada
+    LabelSmoothingFocalLoss -- sebelumnya selalu None padahal sudah
+    terhubung penuh ke loss. Alasan: macro-F1 (berbeda dari balanced
+    accuracy) menghukum turunnya precision akibat sebuah kelas
+    over-predicted dengan mengorbankan kelas lain (terdiagnosis di
+    birnet_diagnose_pooled_bcn.py); menurunkan bobot kontribusi loss kelas
+    yang sudah melimpah (nv, mel) dibanding kelas langka (df, vasc)
+    mencegah pola over-prediction tersebut, bukan cuma mengukurnya di
+    akhir."""
     counts = np.bincount(labels, minlength=num_classes).astype(np.float64)
-    counts = np.maximum(counts, 1)  # avoid div-by-zero for any missing class in a fold
+    counts = np.maximum(counts, 1)  # hindari div-by-zero untuk kelas yang absen di suatu fold
     inv_freq = 1.0 / counts
-    weights = inv_freq / inv_freq.mean()  # normalize so mean weight = 1 (keeps loss scale comparable)
+    weights = inv_freq / inv_freq.mean()  # normalisasi supaya mean bobot = 1 (menjaga skala loss sebanding)
     return torch.tensor(weights, dtype=torch.float32)
 
 
 class LabelSmoothingFocalLoss(nn.Module):
-    """L_cls (Persamaan 1): focal loss dengan label smoothing,
+    """L_cls (Persamaan 1): focal loss memakai label smoothing,
     gamma=2.0, epsilon=0.1."""
 
     def __init__(self, gamma: float = 2.0, smoothing: float = 0.1, weight: Optional[torch.Tensor] = None):
@@ -1094,7 +1105,7 @@ class BIRNetJointLoss(nn.Module):
     def forward(self, seg_logits, cls_logits, gt_mask, gt_label,
                 has_mask: bool = True, has_label: bool = True):
         loss_dict = {}
-        total = seg_logits.sum() * 0.0  # anchor ke computation graph
+        total = seg_logits.sum() * 0.0  # jangkar ke computation graph
 
         if has_mask:
             l_seg = self.seg_loss(seg_logits, gt_mask)
@@ -1176,7 +1187,7 @@ def evaluate_segmentation(model: nn.Module, loader: DataLoader, device: str, thr
 
 def find_best_threshold(model: nn.Module, loader: DataLoader, device: str,
                          thr_range=np.arange(0.30, 0.81, 0.02)) -> Tuple[float, float]:
-    """Grid search threshold optimal pada validation set (paper: tau*=0.78)."""
+    """Grid search ambang optimal pada validation set (paper: tau*=0.78)."""
     model.eval()
     all_probs, all_masks = [], []
     with torch.no_grad():
@@ -1247,10 +1258,10 @@ class CheckpointManager:
 def train_one_epoch(model: nn.Module, loader: DataLoader,
                      optimizer: optim.Optimizer, criterion: BIRNetJointLoss,
                      device: str, big_variant: str = "crossattn") -> Dict[str, float]:
-    """`big_variant` dicek untuk kasus "oracle" (config ablasi C8): pada
-    varian ini saja, GT mask ikut dilewatkan ke forward() model supaya
-    modul BIG memakai boundary GT alih-alih mask prediksi. Untuk varian
-    lain tidak berpengaruh (gt_mask diabaikan oleh BIRNet.forward)."""
+    """`big_variant` diperiksa untuk kasus "oracle" (config ablasi C8):
+    hanya pada varian ini GT mask turut diteruskan ke forward() model agar
+    modul BIG memakai boundary GT, bukan mask prediksi. Pada varian lain
+    tidak ada efeknya (gt_mask diabaikan oleh BIRNet.forward)."""
     model.train()
     total_loss = total_dice = total_iou = total_acc = n = 0
     for imgs, masks, labels in loader:
@@ -1285,8 +1296,8 @@ def train_one_epoch(model: nn.Module, loader: DataLoader,
 
 
 def compute_class_weights(df: pd.DataFrame, num_classes: int, device: str) -> torch.Tensor:
-    """Inverse-frequency class weight (dinormalisasi ke jumlah=num_classes),
-    digunakan sebagai bobot tambahan pada focal loss."""
+    """Inverse-frequency class weight (dinormalisasi supaya
+    jumlah=num_classes), dipakai sebagai bobot tambahan pada focal loss."""
     counts = np.array([int((df["label"] == i).sum()) for i in range(num_classes)], dtype=np.float32)
     counts = np.where(counts == 0, 1, counts)
     weights = 1.0 / (counts / counts.sum())
@@ -1326,7 +1337,7 @@ def train_birnet(cfg: Config, model: nn.Module,
         lr = optimizer.param_groups[0]["lr"]
         elapsed = time.time() - t0
 
-        # Skor gabungan: rata-rata balanced accuracy klasifikasi dan Dice segmentasi
+        # Skor gabungan: rata-rata balanced accuracy klasifikasi dengan Dice segmentasi
         score = 0.5 * val_bal + 0.5 * seg_stats["dice"]
 
         for key, val in [
@@ -1378,7 +1389,7 @@ def final_evaluation(cfg: Config, model: nn.Module,
     ckpt = torch.load(ckpt_manager.best_path, map_location=device, weights_only=False)
     model.load_state_dict(ckpt["model_state"])
 
-    # Threshold optimal untuk segmentasi (paper: tau*=0.78)
+    # Ambang optimal untuk segmentasi (paper: tau*=0.78)
     best_thr, best_val_dice = find_best_threshold(model, seg_val_loader, device)
 
     t_acc, t_bal, t_preds, t_labs = evaluate_classification(model, test_loader, device)
@@ -1431,12 +1442,12 @@ def build_datasets(cfg: Config, paths: DatasetPaths):
     isic17_df = build_seg_dataframe(paths.isic17_img, paths.isic17_mask, mask_suffix="_segmentation.png")
     ph2_df = build_ph2_dataframe(paths)
 
-    isic_t3_df = build_isic_task3_dataframe(paths)  # evaluasi cross-dataset saja
+    isic_t3_df = build_isic_task3_dataframe(paths)  # hanya evaluasi cross-dataset
 
     # Dataset training gabungan: HAM10000 (dengan oversampling) + ISIC Task1
-    # Oversampling hanya diterapkan pada partisi HAM train yang punya label
-    # kelas (Bagian 3.3), ISIC Task1 tidak memiliki label kelas sehingga
-    # tidak dioversample.
+    # Oversampling cuma diterapkan pada partisi HAM train yang punya label
+    # kelas (Bagian 3.3); ISIC Task1 tak punya label kelas sehingga tidak
+    # ikut dioversample.
     joint_train_df = pd.concat([ham_train_df, isic_t1_train_df], ignore_index=True)
 
     train_ds = SkinLesionDataset(
@@ -1452,9 +1463,9 @@ def build_datasets(cfg: Config, paths: DatasetPaths):
 
     cross_ds = SkinLesionDataset(isic_t3_df, cfg.img_size, transform=val_aug)
 
-    # Data segmentasi tambahan (ISIC 2016/2017/PH2) digabung ke training
-    # penuh apabila diperlukan pelatihan segmentasi lanjutan yang lebih
-    # besar; disediakan di sini agar dapat dipakai sesuai kebutuhan.
+    # Data segmentasi tambahan (ISIC 2016/2017/PH2) digabungkan ke training
+    # penuh bila sebuah pelatihan segmentasi lanjutan yang lebih besar
+    # diperlukan; disiapkan di sini supaya bisa dipakai sesuai kebutuhan.
     extra_seg_df = pd.concat([isic16_df, isic17_df, ph2_df], ignore_index=True)
     extra_seg_ds = SkinLesionDataset(extra_seg_df, cfg.img_size, transform=train_aug) \
         if len(extra_seg_df) > 0 else None

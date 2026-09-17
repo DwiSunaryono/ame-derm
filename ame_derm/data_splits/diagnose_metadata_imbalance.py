@@ -1,40 +1,40 @@
 """
-Diagnosis OTOMATIS ketidakseimbangan representasi METADATA (bukan cuma
-kelas) di dalam TRAIN-VAL -- generalisasi dari temuan manual (MEL x usia
-korelasi n-vs-error = -0.814, NV x lokasi = -0.580), TAPI field metadata
-mana yg diuji TIDAK di-hardcode ke usia/sex/lokasi saja -- field APAPUN
-yg ada di metadata dataset (dideteksi otomatis dari kolom yg tersedia,
-minus kolom identitas/path/label) ikut diuji, begitu pula SEMUA kelas.
-Kalau di fold lain ternyata kombinasi (kelas, field) yg berbeda yg jadi
-sumbu ketidakseimbangan -- script ini akan menemukannya sendiri, bukan
-diarahkan ke MEL/NV/usia/lokasi secara khusus.
+Automatic diagnosis of METADATA representation imbalance (not just class)
+inside TRAIN-VAL -- it generalizes the earlier manual finding (MEL x age
+n-vs-error correlation = -0.814, NV x location = -0.580), YET which metadata
+field gets tested is NOT hardcoded to age/sex/location -- ANY field present
+in the dataset metadata (auto-detected from the available columns, minus the
+identity/path/label columns) is tested too, and so is EVERY class. Should a
+later fold turn out to have a different (class, field) combination serving
+as the imbalance axis, this script finds it on its own rather than being
+steered specifically toward MEL/NV/age/location.
 
-PRINSIP (ide user, analogi regresi suhu tubuh manusia): dalam SATU kelas
-yg sama, subgrup (mis. kelas X pada nilai field Y tertentu) yg JARANG
-direpresentasikan di training akan "tertarik" ke pola mayoritas kelasnya
-sendiri saat prediksi -- diukur via korelasi NEGATIF antara n
-(representasi) dan error_rate (dari audit out-of-fold) di seluruh nilai
-suatu field metadata, DI DALAM satu kelas. Kalau korelasinya kuat negatif
-utk (kelas, field) tertentu, field itu genuinely jadi sumbu ketidak-
-seimbangan tersembunyi utk kelas itu -- bukan cuma noise.
+PRINCIPLE (user idea, human body-temperature regression analogy): within a
+SINGLE class, subgroups (e.g. class X at a particular value of field Y) that
+are RARELY represented in training will be "pulled" toward their own class
+majority pattern when predicting -- gauged through the NEGATIVE correlation
+between n (representation) and error_rate (from the out-of-fold audit) across
+all values of a metadata field, WITHIN one class. If the correlation is
+strongly negative for a given (class, field), that field genuinely acts as a
+hidden imbalance axis for that class -- not merely noise.
 
-DETEKSI FIELD OTOMATIS: field kandidat = semua kolom pada dataframe
-metadata dataset SELAIN identitas/path/label (mis utk HAM10000: age, sex,
-localization, dataset -- tapi kalau kolom metadata lain ditambahkan di
-masa depan, otomatis ikut diuji tanpa ubah kode). Kolom numerik (spt age)
-di-bucket otomatis (quantile-based, jumlah bin dari --n_bins_numeric);
-kolom kategorikal dipakai apa adanya.
+AUTOMATIC FIELD DETECTION: candidate fields = every column in the dataset
+metadata dataframe APART FROM identity/path/label (e.g. for HAM10000: age,
+sex, localization, dataset -- but any further metadata column added later is
+tested automatically without a code change). Numeric columns (like age) are
+bucketed automatically (quantile-based, bin count from --n_bins_numeric);
+categorical columns are taken as they are.
 
-LEAKAGE SAFETY: HANYA memakai audit out-of-fold TRAIN-VAL (pool_fold yg
-dipilih) -- TIDAK PERNAH menyentuh TEST, sesuai disiplin project ini.
+LEAKAGE SAFETY: uses ONLY the TRAIN-VAL out-of-fold audit (the chosen
+pool_fold) -- NEVER touches TEST, in keeping with this project's discipline.
 
-PRASYARAT: audit out-of-fold utk --pool_fold yg dipilih HARUS SUDAH ADA
-(dari birnet_audit_trainval_confident_learning.py --pool_fold N) -- audit
-ini mahal (5 sub-model dilatih), jadi TIDAK dipicu otomatis di sini, cuma
-dicek keberadaannya.
+PREREQUISITE: the out-of-fold audit for the chosen --pool_fold MUST ALREADY
+EXIST (from birnet_audit_trainval_confident_learning.py --pool_fold N) --
+that audit is costly (5 sub-models trained), so it is NOT triggered
+automatically here, only checked for existence.
 
 Output: BIRNet_Research/outputs/metadata_imbalance/pool{N}/weak_subgroups.csv
--- resep OTOMATIS (class_name, field, value, n, error_rate, target_n) utk
+-- an AUTOMATIC recipe (class_name, field, value, n, error_rate, target_n) for
 birnet_augment_metadata_targeted.py.
 
 Usage:
@@ -48,16 +48,16 @@ from ame_derm.common import birnet_final as bf
 
 CLASS_NAMES = ("MEL", "NV", "BCC", "AKIEC", "BKL", "DF", "VASC")
 
-# Kolom yg BUKAN metadata (identitas/path/label) -- selain ini, SEMUA
-# kolom pada dataframe HAM10000 diuji otomatis sbg kandidat field.
+# Columns that are NOT metadata (identity/path/label) -- beyond these, ALL
+# columns in the HAM10000 dataframe are auto-tested as candidate fields.
 NON_METADATA_COLS = {"lesion_id", "image_id", "dx", "dx_type", "label", "img_path", "mask_path"}
 
 
 def detect_metadata_fields(ham_df, n_bins_numeric):
-    """Deteksi kolom metadata otomatis dari dataframe -- TIDAK hardcode
-    nama field spesifik. Kolom numerik di-bucket (quantile-based) supaya
-    bisa diperlakukan sama dgn kolom kategorikal; kolom kategorikal
-    dipakai apa adanya (NaN -> 'unknown')."""
+    """Auto-detect metadata columns from the dataframe -- specific field
+    names are NOT hardcoded. Numeric columns get bucketed (quantile-based)
+    so they can be handled like categorical ones; categorical columns are
+    taken as they are (NaN -> 'unknown')."""
     candidate_cols = [c for c in ham_df.columns if c not in NON_METADATA_COLS]
     bucketed = pd.DataFrame(index=ham_df.index)
     field_names = []
@@ -79,15 +79,16 @@ def detect_metadata_fields(ham_df, n_bins_numeric):
 def find_weak_subgroups(predictions_df, field_names, class_names=CLASS_NAMES,
                          min_n_per_cell=8, min_cells_for_corr=3, corr_threshold=-0.4,
                          max_oversample_ratio=10.0):
-    """Inti algoritma diagnosis -- DIPISAH dari main() supaya bisa dipakai
-    ULANG oleh training adaptif (train_classifier_phase2_metadata_adaptive.py),
-    bukan cuma dari audit BEKU sekali jalan. `predictions_df` butuh kolom
-    'true_name' (nama kelas asli) + 'is_wrong' (bool) + semua kolom di
-    field_names -- bisa berasal dari audit out-of-fold statis ATAU dari
-    prediksi model yg SEDANG berjalan (evaluasi live tiap stage), sehingga
-    diagnosis subgrup lemah bisa berubah/adaptif seiring training,
-    persis ide user: keputusan brp banyak sintetis dibutuhkan didasarkan
-    pada kondisi error/benar TERKINI, bukan angka statis di awal."""
+    """Core of the diagnosis algorithm -- kept SEPARATE from main() so that
+    adaptive training (train_classifier_phase2_metadata_adaptive.py) can
+    REUSE it, instead of it being tied to a one-shot FROZEN audit.
+    `predictions_df` requires a 'true_name' column (the original class name)
+    plus 'is_wrong' (bool) and every column listed in field_names -- these
+    may come from a static out-of-fold audit OR from a model that is STILL
+    training (live per-stage evaluation), so weak-subgroup diagnosis can
+    shift/adapt as training proceeds, exactly the user's idea: how many
+    synthetics are needed is decided from the CURRENT error/correct state,
+    not from numbers fixed at the start."""
     rows = []
     for class_name in class_names:
         sub = predictions_df[predictions_df["true_name"] == class_name]

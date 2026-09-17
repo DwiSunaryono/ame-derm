@@ -111,18 +111,18 @@ def main():
             imgs = imgs.to(DEVICE)
             metas = metas.to(DEVICE)
             
-            # Predict with Generalist
+            # Run the Generalist prediction
             prob_gen = extract_probs(models["generalist"], imgs, metas)
             
-            # Predict with Experts
+            # Run the Experts prediction
             prob_exp = torch.zeros_like(prob_gen)
-            # Find which expert applies to each image in batch
+            # Determine which expert each batch image maps to
             batch_start_idx = i * val_loader.batch_size
             for j in range(imgs.shape[0]):
                 loc = val_df.iloc[batch_start_idx + j]["localization"]
                 expert_type = get_expert_name(loc)
                 if expert_type in models and models[expert_type] is not None:
-                    # Single image prediction
+                    # Predict for a single image
                     img_single = imgs[j:j+1]
                     meta_single = metas[j:j+1]
                     prob_exp[j:j+1] = extract_probs(models[expert_type], img_single, meta_single)
@@ -139,7 +139,7 @@ def main():
     X_metas = torch.cat(X_metas)
     Y_labels = torch.cat(Y_labels)
 
-    # Filter out unknown labels
+    # Drop rows with unknown labels
     valid = Y_labels >= 0
     X_prob_gen, X_prob_exp, X_metas, Y_labels = X_prob_gen[valid], X_prob_exp[valid], X_metas[valid], Y_labels[valid]
 
@@ -147,7 +147,7 @@ def main():
     router = SmartRouter().to(DEVICE)
     optimizer = torch.optim.Adam(router.parameters(), lr=1e-3, weight_decay=1e-4)
     
-    # We want to minimize the Cross Entropy of the merged probabilities
+    # The goal is to minimize the Cross Entropy over the merged probabilities
     dataset = torch.utils.data.TensorDataset(X_prob_gen, X_prob_exp, X_metas, Y_labels)
     loader = torch.utils.data.DataLoader(dataset, batch_size=32, shuffle=True)
 
@@ -165,7 +165,7 @@ def main():
             w_exp = router(p_gen, p_exp, meta) # (B, 1)
             p_merged = w_exp * p_exp + (1 - w_exp) * p_gen
             
-            # Avoid log(0)
+            # Guard against log(0)
             loss = nn.NLLLoss()(torch.log(p_merged + 1e-8), label)
             
             optimizer.zero_grad()

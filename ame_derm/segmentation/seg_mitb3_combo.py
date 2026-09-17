@@ -1,7 +1,8 @@
-"""Tests the newly-discovered Segformer+mit_b3 model (solo test_dice=0.9033,
-beating the entire prior CNN-ensemble champion of 0.9002) in combination with
-everything already proven to work: TTA (4-way), guided filter (r=30), and
-ensembling with the existing strong members (b5, resnet50, highres384-b4).
+"""Puts the newly-discovered Segformer+mit_b3 model (solo test_dice=0.9033,
+which surpasses the entire prior CNN-ensemble champion of 0.9002) together
+with every component already shown to help: TTA (4-way), guided filter
+(r=30), and ensembling against the existing strong members (b5, resnet50,
+highres384-b4).
 
 Usage:
     python birnet_seg_mitb3_combo.py
@@ -134,7 +135,7 @@ def main():
     d, _ = dice_iou((hr_probs > 0.5).astype(np.float32), gt_ref)
     print(f"  highres384 solo+TTA: dice={d:.4f}")
 
-    # mit_b3 solo + TTA + GF
+    # mit_b3 on its own, plus TTA and GF
     print(f"\n{'='*70}\nmit_b3 solo + TTA + guided_filter(r={GF_RADIUS})\n{'='*70}")
     gf_dices = []
     for idx in range(all_probs["mit_b3"].shape[0]):

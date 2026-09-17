@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """STRATEGI 4C — RETRAIN BCN dengan CROP BERSIH (tanpa segmen dilatih-HAM).
 
-Motivasi: crop yg dipakai champion (cropped_phase1_final) dihasilkan pipeline
-segmentasi Phase1 yg DILATIH DI HAM10000, lalu diterapkan ke gambar BCN
-(domain shift). Karena itu tidak jelas apakah degradasi DF-BCN berasal dari
-arkeitiktur model atau dari segmen yg kurang cocok di domain BCN.
+Latar: crop yang dipakai champion (cropped_phase1_final) berasal dari pipeline
+segmentasi Phase1 yang DILATIH DI HAM10000, lalu dipakai ke gambar BCN
+(domain shift). Akibatnya belum jelas apakah degradasi DF-BCN bersumber dari
+arsitektur model atau dari segmen yang kurang pas di domain BCN.
 
-Eksperimen ini mengganti crop BCN dengan 2 varian "bersih" yg TIDAK bergantung
+Eksperimen ini menukar crop BCN dengan 2 varian "bersih" yang TIDAK bergantung
 pada model yang dilatih di HAM:
   1. center  : center-crop simetris (asumsi lesi terpusat di dermoskopi).
   2. otsu    : bbox lesi via Otsu thresholding + komponen terbesar + pad 15%
@@ -55,16 +55,16 @@ def center_crop(img, frac=0.72):
 
 
 def otsu_bbox_crop(img, pad_frac=0.15):
-    """bbox lesi via Otsu + largest connected component (tanpa model)."""
+    """bbox lesi lewat Otsu + largest connected component (tanpa model)."""
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
     _, th = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    # background (kulit terang) biasanya > harmoni mask; lesi sering daerah gelap
+    # background (kulit terang) umumnya > mask; lesi kerap berada di daerah gelap
     if th.mean() > 127:
         th = cv2.bitwise_not(th)
     n, labels, stats, cents = cv2.connectedComponentsWithStats(th, 8)
     if n <= 1:
         return img
-    # ambil komponen terbesar yang bukan seluruh frame
+    # pilih komponen terbesar yang bukan seluruh frame
     best, best_area = None, 0
     for i in range(1, n):
         x, y, w, h, area = stats[i]
@@ -129,7 +129,7 @@ def main():
     print(f"[lesion-grouped split seed={args.seed}] "
           f"train={len(train_df)} val={len(val_df)} test={len(test_df)}")
 
-    # ckpt gen-only; suffix mode agar tidak tertimpa
+    # ckpt gen-only; suffix mode supaya tidak tertimpa
     ckpt = os.path.join(CKPT_DIR,
                         f"cls_{BACKBONE}_multimodal_fold0_clean_{args.mode}_best.pth")
 

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Step 1: run the locked Phase-1 segmentation ensemble over the dataset and
-write lesion crops to config.CROP_DIR.
+"""Step 1: execute the locked Phase-1 segmentation ensemble across the dataset
+and write lesion crops into config.CROP_DIR.
 
-Thin wrapper around `python -m ame_derm.segmentation.generate_phase1_crops`;
-all CLI arguments are forwarded. Run `--help` for the full argument list.
+A thin wrapper over `python -m ame_derm.segmentation.generate_phase1_crops`;
+every CLI argument is forwarded. See `--help` for the complete argument list.
 """
 import os
 import runpy

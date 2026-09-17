@@ -15,56 +15,60 @@ Verification Algorithm for Dermoscopic Skin-Lesion Classification**
 
 ---
 
-AME-Derm segments each dermoscopic image, then classifies it with an
-**asymmetric anatomical mixture-of-experts**: a large DINOv2 generalist plus
-three anatomical-zone experts (torso/limb/head), fused by a **static** scalar
-weight and six-view test-time augmentation. A data-driven **rare-class
-verification cascade** recovers precision on classes too scarce to fix by
-retraining. The method is validated internally on HAM10000 (lesion-grouped
-5-fold CV) and externally on the independent BCN20000 cohort, and compared
-against the PanDerm dermatology foundation model under a matched training
-protocol.
+Every dermoscopic image is first segmented by AME-Derm, after which an
+**asymmetric anatomical mixture-of-experts** performs the classification: a
+single large DINOv2 generalist combined with three zone-specific experts
+(torso, limb, head), merged through a **static** scalar weight together with
+six-view test-time augmentation. Precision on classes that are too scarce to
+correct by retraining is then restored by a data-driven **rare-class
+verification cascade**. Internal validation uses HAM10000 (lesion-grouped
+5-fold CV); external validation uses the separate BCN20000 cohort; and a
+protocol-matched comparison is drawn against the PanDerm dermatology
+foundation model.
 
-This repository contains the implementation, the raw results behind the
-paper's headline numbers, and a script that turns them into tables you can
-check yourself — no training, no GPU, no API calls needed.
+Inside this repository are the implementation, the unprocessed outputs behind
+the paper's key figures, and a script that converts those outputs into tables
+you can verify yourself — no GPU, no training, and no API calls required.
 
-## Contents
+## Repository layout
 
 | Path | Description |
 |---|---|
-| [`ame_derm/`](ame_derm) | The AME-Derm method: segmentation, anatomical experts, static-fusion MoE, the ABCD placebo ablation, and the VLM rare-class verification cascade |
-| [`baselines/`](baselines) | The PanDerm foundation-model comparison, under a training protocol matched to AME-Derm |
-| [`evaluation/`](evaluation) | Statistical significance testing (paired t-test, Wilcoxon signed-rank, exact sign test) and the inference-latency benchmark |
-| [`pipeline/`](pipeline) | Numbered end-to-end scripts: crops → splits → verify → train → evaluate → external → baseline |
-| [`results/`](results) | Raw per-fold/per-sample outputs and a `reproduce_tables.py` that regenerates CSV tables from them |
-| [`docs/`](docs) | System documentation (paper-to-code mapping) and the data preparation guide |
-| `config.py` | Dataset-path configuration, overridable via `.env` |
+| [`ame_derm/`](ame_derm) | The AME-Derm pipeline itself: segmentation, zone experts, static-fusion MoE, the placebo-controlled ABCD ablation, and the VLM rare-class verification cascade |
+| [`baselines/`](baselines) | Comparison against the PanDerm foundation model, carried out under a training protocol matched to AME-Derm |
+| [`evaluation/`](evaluation) | Significance testing (paired t-test, Wilcoxon signed-rank, exact sign test) alongside the inference-latency benchmark |
+| [`pipeline/`](pipeline) | End-to-end scripts numbered in run order: crops → splits → verify → train → evaluate → external → baseline |
+| [`results/`](results) | Unprocessed per-fold and per-sample outputs, plus a `reproduce_tables.py` that rebuilds the CSV tables from that data |
+| [`docs/`](docs) | Documentation of the system (mapping paper sections to code) and the dataset-preparation guide |
+| `config.py` | Configuration of dataset paths, which can be overridden through `.env` |
 
-**Not included:** the source datasets, trained checkpoints, the PanDerm
-repository itself, and an automated VLM API for the verification cascade
-(it is human-in-the-loop by design — see [`ame_derm/vlm_cascade/`](ame_derm/vlm_cascade)).
+**What this repository does not ship:** the source datasets, trained
+checkpoints, the PanDerm codebase, or an automated VLM API for the
+verification cascade (the cascade is intentionally human-in-the-loop — see
+[`ame_derm/vlm_cascade/`](ame_derm/vlm_cascade)).
 
-## Quick start
+## Getting started
 
-**1. Install dependencies**
+**1. Install the dependencies**
 
 ```bash
 python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-**2. Configure paths** — copy `.env.example` to `.env` and point it at your
-dataset/checkpoint layout (defaults match what produced the paper's numbers):
+**2. Set the paths** — duplicate `.env.example` as `.env` and aim it at
+wherever your datasets and checkpoints live (the defaults reproduce the layout
+behind the paper's numbers):
 
 ```bash
 cp .env.example .env
 ```
 
-**3. Add your datasets** — see [`docs/DATA_PREPARATION.md`](docs/DATA_PREPARATION.md)
-for the exact directory layout expected under `BIRNet_Research/dataset/`.
+**3. Place your datasets** — the precise directory tree required under
+`BIRNet_Research/dataset/` is given in
+[`docs/DATA_PREPARATION.md`](docs/DATA_PREPARATION.md).
 
-**4. Run the pipeline**
+**4. Execute the pipeline**
 
 ```bash
 python pipeline/01_build_segmentation_crops.py
@@ -76,54 +80,55 @@ python pipeline/06_external_validation.py
 python pipeline/07_baseline_panderm_comparison.py   # requires the PanDerm repo
 ```
 
-Every script forwards to its underlying `ame_derm`/`baselines` module and
-accepts `--help` for its full argument list. Full stage-by-stage detail,
-including which scripts back which paper table/figure, is in
+Each script delegates to the corresponding `ame_derm`/`baselines` module and
+responds to `--help` with its complete argument list. Stage-by-stage specifics,
+including the script behind every table or figure in the paper, appear in
 [`docs/SYSTEM_DOCUMENTATION.md`](docs/SYSTEM_DOCUMENTATION.md).
 
-> **Just want to check the reported numbers?** Skip straight to
-> [Reproducible results](#reproducible-results) below — it regenerates from
-> data already in this repository, no dataset download required.
+> **Only need to confirm the reported numbers?** Go directly to
+> [Reproducing the results](#reproducing-the-results) below, which rebuilds
+> them from data already committed here, so no dataset download is needed.
 
 ## Datasets
 
 | Dataset | Role | Images | Source |
 |---|---|---|---|
-| **HAM10000** | Primary classification benchmark, lesion-grouped 5-fold CV | 10,015 | [ISIC Archive collection 212](https://api.isic-archive.com/collections/212/) |
-| **BCN20000** | Independent external classification cohort | 11,982 | [ISIC Archive collection 249](https://api.isic-archive.com/collections/249/) |
-| **ISIC 2018 Task 1** | Segmentation: pooled training + evaluation | 2,594 / 100 / 1,000 | [ISIC 2018 challenge](https://challenge.isic-archive.com/data/#2018) |
+| **HAM10000** | Main classification benchmark; lesion-grouped 5-fold CV | 10,015 | [ISIC Archive collection 212](https://api.isic-archive.com/collections/212/) |
+| **BCN20000** | Standalone external classification cohort | 11,982 | [ISIC Archive collection 249](https://api.isic-archive.com/collections/249/) |
+| **ISIC 2018 Task 1** | Segmentation: pooled training and evaluation | 2,594 / 100 / 1,000 | [ISIC 2018 challenge](https://challenge.isic-archive.com/data/#2018) |
 | **ISIC 2017** | Segmentation: pooled training only | 2,000 | [ISIC 2017 challenge](https://challenge.isic-archive.com/data/#2017) |
 | **ISIC 2016** | Segmentation: pooled training only | 900 | [ISIC 2016 challenge](https://challenge.isic-archive.com/data/#2016) |
 | **PH2** | Segmentation: pooled training only | 200 | [PH2 Dataset](https://www.fc.up.pt/addi/ph2%20database.html) |
-| **ISIC 2019** (rare classes only) | Tested external rare-class supply lever — **negative result**: costs 2.7 pts on the internal model and −1.1 to −1.8 pts on BCN20000 (Table `tab:ledger`) | subset | [ISIC 2019 challenge](https://challenge.isic-archive.com/data/#2019) |
+| **ISIC 2019** (rare classes only) | Tried as an external rare-class supply lever — **negative result**: it loses 2.7 pts on the internal model and −1.1 to −1.8 pts on BCN20000 (Table `tab:ledger`) | subset | [ISIC 2019 challenge](https://challenge.isic-archive.com/data/#2019) |
 
-Full directory layout in [`docs/DATA_PREPARATION.md`](docs/DATA_PREPARATION.md).
+The complete directory layout is in [`docs/DATA_PREPARATION.md`](docs/DATA_PREPARATION.md).
 
-## Reproducible results
+## Reproducing the results
 
-The tables below are regenerated deterministically from the raw outputs in
+The tables below are rebuilt deterministically from the raw outputs in
 [`results/data/`](results/data) by
 [`results/scripts/reproduce_tables.py`](results/scripts/reproduce_tables.py)
-— no training, no GPU. Full CSVs are in [`results/tables/`](results/tables).
+— no GPU and no training required. The full CSVs reside in
+[`results/tables/`](results/tables).
 
 ```bash
 cd results
 python scripts/reproduce_tables.py
 ```
 
-Every table below is captioned with the specific manuscript table it
-reproduces or supports, e.g. *"→ paper Table 10 (`tab:2x2`)"*, using the
-manuscript's own table numbers (in the order tables appear across the whole
-paper, methods section first). Tables marked **"supporting data for"**
-aren't themselves in the paper — they're the per-fold numbers behind a
-paper table that only reports the mean.
+Each table below carries a caption naming the manuscript table it reproduces
+or backs, for instance *"→ paper Table 10 (`tab:2x2`)"*, and follows the
+manuscript's own numbering (the sequence in which tables occur through the
+whole paper, methods first). A table labeled **"supporting data for"** is not
+itself part of the paper — it holds the per-fold values underlying a paper
+table that reports only the mean.
 
-### Headline result: DINOv2 beats the PanDerm foundation model
+### Primary result: DINOv2 outperforms the PanDerm foundation model
 
-This is the paper's strongest claim, and the one we can verify most
-cleanly: both sides are computed from scratch in this repository. PanDerm's
-macro-F1 is recomputed here directly from its own raw per-sample
-predictions, not copied from the manuscript.
+Among the paper's claims, this one is both the strongest and the cleanest to
+verify, since both sides are recomputed from scratch inside this repository.
+PanDerm's macro-F1 is recalculated here straight from its own unprocessed
+per-sample predictions rather than copied out of the manuscript.
 
 ```bash
 python evaluation/statistical_significance.py
@@ -142,9 +147,9 @@ PanDerm (backbone)")*:
 | 4 | 82.88 | 78.56 | +4.33 |
 | **mean** | **80.00** | **75.34** | **+4.66** |
 
-DINOv2 wins all 5 folds (exact sign test *p* = 0.031; paired *t*-test
-*p* = 0.001), reproducing the manuscript's reported +4.7-point gap almost
-exactly.
+All 5 folds go to DINOv2 (exact sign test *p* = 0.031; paired *t*-test
+*p* = 0.001), reproducing the +4.7-point gap stated in the manuscript to
+within a hair.
 
 **Table R2** — Backbone × MoE, 2×2 *(→ paper Table 10,* `tab:2x2`*)*:
 
@@ -153,15 +158,16 @@ exactly.
 | DINOv2 | 80.00 | **81.82** (AME-Derm) |
 | PanDerm | 75.34 | 77.34 |
 
-Every number here is raw except the AME-Derm cell — see the note under
-Table R4 below for why. Full per-fold data:
+All values here are raw apart from the AME-Derm cell — the note beneath
+Table R4 explains why. Complete per-fold data:
 [`results/tables/panderm_comparison.csv`](results/tables/panderm_comparison.csv).
 
-### Secondary result: asymmetric vs. symmetric MoE
+### Secondary finding: asymmetric versus symmetric MoE
 
-The manuscript's other headline comparison — does the asymmetric mixture
-beat a capacity-matched symmetric one — is a real but much smaller effect.
-The manuscript itself calls it "small and borderline," and we agree:
+The remaining headline comparison in the manuscript — whether the asymmetric
+mixture outperforms a capacity-matched symmetric counterpart — is genuine but
+decidedly smaller. The manuscript describes it as "small and borderline," a
+characterization we share:
 
 **Table R3** — Main ablation ladder, generalist vs. symmetric MoE vs.
 AME-Derm *(→ paper Table 7,* `tab:main`*, three of its five rows)*:
@@ -172,9 +178,9 @@ AME-Derm *(→ paper Table 7,* `tab:main`*, three of its five rows)*:
 | Symmetric MoE (base experts + base generalist) | 80.97 ± 1.58 |
 | AME-Derm (asymmetric) | 81.82 ± 1.82 |
 
-Table R3 only has means. **Table R4** below is the per-fold breakdown behind
-it — this is where the "4 of 5 folds" claim in paper Table 11 (`tab:stats`,
-row "AME-Derm vs. symmetric MoE") actually comes from:
+Only means appear in Table R3. The per-fold split behind those means is
+**Table R4** below — it is the actual origin of the "4 of 5 folds" statement
+in paper Table 11 (`tab:stats`, row "AME-Derm vs. symmetric MoE"):
 
 **Table R4** — Table R3, per fold *(supporting data for paper Table 11,*
 `tab:stats`*)*:
@@ -187,44 +193,46 @@ row "AME-Derm vs. symmetric MoE") actually comes from:
 | 3 | 81.74 | 83.55 | +1.81 |
 | 4 | 82.25 | 81.88 | **−0.37** |
 
-Fold 4 is where AME-Derm actually loses — that's the one fold out of five
-that doesn't favor it. Paired *t*-test on these five deltas:
-*t*(4) = 2.30, *p* = 0.041. Wilcoxon signed-rank: *p* ≈ 0.062 (manuscript:
-0.063). It's a real margin, but nowhere near as clean as the DINOv2-vs-
-PanDerm result in Table R1/R2 above (which won every fold), which is why
-the manuscript leans on mechanism and fold-wise consistency rather than
-significance alone for this particular claim.
+The single fold where AME-Derm comes out behind is fold 4 — the only one of
+the five that does not favor it. A paired *t*-test over the five deltas gives
+*t*(4) = 2.30, *p* = 0.041; Wilcoxon signed-rank gives *p* ≈ 0.062
+(manuscript: 0.063). The margin is real, yet far less clean than the
+DINOv2-vs-PanDerm outcome in Table R1/R2 above (which swept every fold), and
+that is why for this particular claim the manuscript relies on mechanism and
+fold-wise consistency rather than significance by itself.
 
-*Note: in Table R4, the Symmetric MoE column is raw (`champ_static_f1`,
-straight from `moe_champion_5fold_results.json`). The AME-Derm column is
-not an independent measurement — we couldn't recover the asymmetric
-model's own per-fold output from archived logs, so it's reconstructed as
-Symmetric MoE plus the per-fold delta the manuscript reports (which is also
-exactly the Δ column above). Everything else on this page is raw. See
-[`results/README.md`](results/README.md) for the full breakdown of what's
-raw versus manuscript-sourced.*
+*Note: within Table R4, the Symmetric MoE column is raw
+(`champ_static_f1`, taken directly from `moe_champion_5fold_results.json`).
+The AME-Derm column is not an independent measurement — the asymmetric
+model's own per-fold output could not be recovered from the archived logs,
+so it is rebuilt as Symmetric MoE plus the manuscript's per-fold delta (which
+happens to equal the Δ column above). Every other value on this page is raw.
+The complete accounting of what is raw versus manuscript-sourced is in
+[`results/README.md`](results/README.md).*
 
-### Split-representativeness audit
+### Audit of split representativeness
 
 **Table R5** — Split-representativeness audit, averaged over folds
 *(supporting data for paper Table 4,* `tab:protocol`*, and the
 "lesion-grouped, metadata-representative" claims in §Experimental
 Protocols)*.
 
-The lesion-grouped 5-fold split has zero lesion leakage — a real fix from
-an earlier, non-grouped split that leaked 34.8%/36.1% of test/val images
-(see [`docs/SYSTEM_DOCUMENTATION.md`](docs/SYSTEM_DOCUMENTATION.md) for the
-story). It also stays close to the global class/dataset/sex/localization/age
-distribution across folds: mean deviation ≤0.7pp, worst case ≤3.1pp. Full
-breakdown in
+No lesion leakage at all occurs in the lesion-grouped 5-fold split, a genuine
+improvement over an earlier non-grouped split that leaked 34.8%/36.1% of
+test/val images (the background is recounted in
+[`docs/SYSTEM_DOCUMENTATION.md`](docs/SYSTEM_DOCUMENTATION.md)). Across folds
+it also tracks the global class/dataset/sex/localization/age distribution
+closely: mean deviation ≤0.7pp and worst case ≤3.1pp. The complete breakdown
+is in
 [`results/tables/split_audit_summary.csv`](results/tables/split_audit_summary.csv).
 
 ## Configuration
 
-Dataset paths (`CROP_DIR`, `BCN_CSV`, `BCN_IMG`, `AME_DERM_ROOT`) are
-centralized in [`config.py`](config.py) and overridable via `.env`
-(see `.env.example`). Everything else (backbone choice, seeds, TTA views,
-epochs, etc.) is a per-script CLI argument — run any script with `--help`.
+The dataset paths (`CROP_DIR`, `BCN_CSV`, `BCN_IMG`, `AME_DERM_ROOT`) are
+gathered in [`config.py`](config.py) and can be overridden through `.env`
+(see `.env.example`). All remaining settings — backbone, seeds, TTA views,
+epochs, and so on — are supplied as per-script CLI arguments; invoke any
+script with `--help`.
 
 ## Contributors
 
@@ -234,7 +242,7 @@ epochs, etc.) is a per-script CLI argument — run any script with `--help`.
 - **Laras Suciningtyas** — Department of Electrical Engineering, Institut Teknologi Sepuluh Nopember, Surabaya 60111, Indonesia
 - **Shoffi Izza Sabilla** — Department of Medical Technology, Institut Teknologi Sepuluh Nopember, Surabaya 60111, Indonesia
 
-## Citation
+## How to cite
 
 ```bibtex
 @article{sunaryono2026amederm,
@@ -250,12 +258,12 @@ epochs, etc.) is a per-script CLI argument — run any script with `--help`.
 }
 ```
 
-> **Note.** This is a manuscript submitted to *Biomedical Signal Processing
-> and Control* (Elsevier); **no DOI is assigned yet**. This citation is
-> provided for attribution only — final bibliographic details (volume,
-> pages, DOI) will follow acceptance. Corresponding author: **Dwi Sunaryono
-> (dwi@its.ac.id)**.
+> **Note.** This manuscript is under submission to *Biomedical Signal
+> Processing and Control* (Elsevier) and **no DOI has been assigned yet**.
+> The citation above serves attribution purposes only; final bibliographic
+> details (volume, pages, DOI) will be supplied once accepted. Corresponding
+> author: **Dwi Sunaryono (dwi@its.ac.id)**.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — refer to [LICENSE](LICENSE).

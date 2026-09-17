@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Prep BCN crop-lesi → CLAHE (LAB) + bilateral (lensa Bagian 3.2).
+"""Siapkan BCN crop-lesi → CLAHE (LAB) + bilateral (lensa Bagian 3.2).
 
-Urutan = crop dulu (baca cropped_phase1_final/{iid}.jpg), lalu aplikasikan
-CLAHE+bilateral — persis lensa training champion pada crop. Hasil dicache di
-BIRNet_Research/outputs/bcn_crop_clahe/{iid}.jpg supaya dataset retrain
+Urutannya = crop lebih dulu (baca cropped_phase1_final/{iid}.jpg), baru
+terapkan CLAHE+bilateral — persis lensa training champion pada crop. Hasilnya
+dicache di BIRNet_Research/outputs/bcn_crop_clahe/{iid}.jpg agar dataset retrain
 (--img_mode crop_clahe di birnet_retrain_bcn.py) tinggal resize ke 224.
 
-Contrast dgn birnet_prep_bcn_clahe.py (full-frame) dan CLEAN_DIR (GWDR).
+Bandingkan dgn birnet_prep_bcn_clahe.py (full-frame) dan CLEAN_DIR (GWDR).
 
 Usage:
   .venv/bin/python3 birnet_prep_bcn_crop_clahe.py [--split test|None]

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Regenerates results/tables/*.csv from the raw JSON in results/data/ —
-no training, no GPU, no API calls, just arithmetic over already-computed
+"""Rebuilds results/tables/*.csv from the raw JSON under results/data/ —
+no GPU, no training, no API calls, only arithmetic over already-computed
 per-sample predictions and per-fold metrics.
 
 Run from the results/ directory:
@@ -8,28 +8,28 @@ Run from the results/ directory:
     cd results
     python scripts/reproduce_tables.py
 
-Produces:
+Generates:
     tables/panderm_comparison.csv       - README Table R1 / HEADLINE result:
                                            DINOv2 (AME-Derm's backbone) vs.
-                                           PanDerm, per fold, fully raw
+                                           PanDerm, per fold, entirely raw
     tables/backbone_moe_2x2.csv         - README Table R2 -> paper Table 10
                                            (tab:2x2): backbone x MoE, 2x2
     tables/panderm_seed_robustness.csv  - PanDerm re-estimated at a second
                                            seed (122), confirming the ranking
-                                           isn't a favorable-seed artifact
+                                           is no favorable-seed artifact
     tables/main_ablation_ladder.csv     - README Table R3, secondary/modest
                                            result: generalist vs. symmetric
                                            MoE vs. AME-Derm (see caveat below)
     tables/main_ablation_ladder_per_fold.csv - README Table R4, the same
                                            result per fold, so the "4 of 5
-                                           folds" claim is checkable
+                                           folds" claim can be checked
     tables/external_validation_bcn.csv  - per-seed macro-F1 on the BCN20000
                                            external test set
     tables/split_audit_summary.csv      - per-field split-representativeness
                                            audit, averaged over 5 folds
 
-See docs/SYSTEM_DOCUMENTATION.md in the repository root for what each
-number means and which paper section it backs.
+See docs/SYSTEM_DOCUMENTATION.md in the repository root for the meaning of
+each number and the paper section it supports.
 """
 import csv
 import json
@@ -50,12 +50,12 @@ RESULTS_DIR = os.path.dirname(HERE)
 DATA_DIR = os.path.join(RESULTS_DIR, "data")
 TABLES_DIR = os.path.join(RESULTS_DIR, "tables")
 
-# Per-fold difference (AME-Derm - symmetric MoE), macro-F1 points, as reported
-# in the manuscript (Results, Section 3, "Statistical Significance") — the
-# asymmetric AME-Derm model's own raw per-fold output was not recovered from
-# archived logs (see docs/SYSTEM_DOCUMENTATION.md), so its ladder entry below
-# is champ_static_f1 + this documented delta, not an independently-computed
-# value.
+# Per-fold difference (AME-Derm - symmetric MoE), in macro-F1 points, exactly
+# as reported in the manuscript (Results, Section 3, "Statistical Significance")
+# — the asymmetric AME-Derm model's own raw per-fold output could not be
+# recovered from archived logs (see docs/SYSTEM_DOCUMENTATION.md), so its ladder
+# entry below equals champ_static_f1 + this documented delta rather than an
+# independently computed value.
 PAPER_DELTAS_PTS = np.array([1.33, 0.71, 0.73, 1.81, -0.37])
 
 
@@ -70,11 +70,11 @@ def write_csv(path, header, rows):
 
 def panderm_comparison():
     """HEADLINE result (paper §"Comparison with a Dermatology Foundation
-    Model"): DINOv2 (AME-Derm's backbone) vs. PanDerm, per fold. Both sides
-    are raw — PanDerm's macro-F1 is computed here from scratch from its own
-    per-sample predictions, not copied from the manuscript. This is the
-    result the paper itself calls "the more robust" of its two headline
-    comparisons (5/5 folds positive, exact sign test p=0.031), unlike the
+    Model"): DINOv2 (AME-Derm's backbone) vs. PanDerm, per fold. Neither side
+    is borrowed — PanDerm's macro-F1 is derived here from scratch out of its
+    own per-sample predictions, not copied from the manuscript. Of the paper's
+    two headline comparisons, this is the one it calls "the more robust"
+    (5/5 folds positive, exact sign test p=0.031), unlike the
     modest/borderline internal ablation in main_ablation_ladder() below.
     """
     with open(os.path.join(DATA_DIR, "moe_champion_5fold_results.json")) as f:
@@ -103,8 +103,8 @@ def panderm_comparison():
 
 def backbone_moe_2x2():
     """README Table R2 -> paper Table 10 (tab:2x2): backbone x MoE, 2x2.
-    DINOv2 single-generalist and PanDerm (both cells) are raw; the AME-Derm
-    cell is reconstructed (see main_ablation_ladder() below and the README)."""
+    The DINOv2 single-generalist and PanDerm (both cells) are raw; the AME-Derm
+    cell is reconstructed instead (see main_ablation_ladder() below and the README)."""
     with open(os.path.join(DATA_DIR, "moe_champion_5fold_results.json")) as f:
         moe_folds = json.load(f)
     dinov2_gen = np.array([r["gen_only_f1"] for r in moe_folds]) * 100
@@ -133,9 +133,9 @@ def backbone_moe_2x2():
 
 def panderm_seed_robustness():
     """Paper §"Comparison with a Dermatology Foundation Model": "re-estimated
-    at a second seed (122), the same PanDerm reaches 76.60 +/- 2.6" — checks
-    the PanDerm ranking isn't an artifact of a favorable seed. Computed fresh
-    from raw per-sample predictions at both seeds."""
+    at a second seed (122), the same PanDerm reaches 76.60 +/- 2.6" — this
+    verifies the PanDerm ranking is not an artifact of a favorable seed.
+    Derived fresh from raw per-sample predictions at both seeds."""
     rows = []
     for seed in (42, 122):
         vals = []

@@ -1,14 +1,15 @@
-"""Tests another genuinely new architecture axis for the Phase 1 ensemble:
-UPerNet decoder + ConvNeXt encoder (via timm-universal, "tu-convnext_tiny"),
-prompted by an external claim that Mask2Former/UperNet+ConvNeXt/InternImage
-beat SegFormer on general segmentation benchmarks. Unlike Mask2Former/SAM/
-UNETR (which need entirely new libraries -- detectron2, segment_anything,
-monai -- none installed here), UPerNet+ConvNeXt works directly through
+"""Explores yet another genuinely new architecture axis for the Phase 1
+ensemble: a UPerNet decoder paired with a ConvNeXt encoder (through
+timm-universal, "tu-convnext_tiny"). The motivation is an external claim
+that Mask2Former/UperNet+ConvNeXt/InternImage outperform SegFormer on
+general segmentation benchmarks. Whereas Mask2Former/SAM/UNETR require
+entirely new libraries (detectron2, segment_anything, monai), none of which
+is installed here, UPerNet+ConvNeXt is available straight through
 segmentation_models_pytorch's existing timm-universal encoder support, so
-it's the same tier of effort as the mit_b3/Segformer test.
+the effort involved matches that of the mit_b3/Segformer test.
 
-Same paper-matched loss, same pooled dataset, same deterministic setup as
-every other Phase 1 script.
+The paper-matched loss, pooled dataset, and deterministic setup are the
+same as in every other Phase 1 script.
 
 Usage:
     python birnet_seg_convnext_upernet.py --seed 42

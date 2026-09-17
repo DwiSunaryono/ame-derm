@@ -1,20 +1,21 @@
-"""Phase 2 classifier + MixUp/CutMix, verified as genuinely untested in this
-project and well-reasoned for HAM10000's extreme class imbalance (forces a
+"""Phase 2 classifier + MixUp/CutMix, confirmed as truly untested in this
+project and sensible for HAM10000's extreme class imbalance (it imposes a
 continuous decision boundary between majority classes like NV/MEL and
-minority classes like DF/VASC, instead of letting the model memorize the
-few minority samples directly).
+minority classes like DF/VASC, rather than letting the model memorize the
+handful of minority samples outright).
 
-Uses timm.data.Mixup (mixup_alpha=0.2, cutmix_alpha=1.0, switch_prob=0.5,
-built-in label_smoothing=0.1) which produces soft-label targets, paired
-with a custom weighted soft-target cross-entropy that preserves this
-project's inverse-frequency class weighting: each mixed sample's loss
-weight is the same lambda-interpolation of both source classes' weights
-as the soft target itself, so class-weighting and MixUp are not just
-stacked naively but mathematically consistent with each other.
+Relies on timm.data.Mixup (mixup_alpha=0.2, cutmix_alpha=1.0, switch_prob=0.5,
+built-in label_smoothing=0.1), which yields soft-label targets, combined
+with a custom weighted soft-target cross-entropy that keeps this project's
+inverse-frequency class weighting intact: a mixed sample's loss weight is
+the same lambda-interpolation of the two source classes' weights as the soft
+target itself, so class-weighting and MixUp are not merely stacked naively
+but are mathematically consistent with one another.
 
-Otherwise identical to train_classifier_phase2_final.py (same crops, same
-5-fold GroupKFold, same F1-macro checkpoint selection, same discriminative
-LR+warmup) so the MixUp/CutMix effect is isolated as the only new variable.
+In all other respects identical to train_classifier_phase2_final.py (same
+crops, same 5-fold GroupKFold, same F1-macro checkpoint selection, same
+discriminative LR+warmup), so the MixUp/CutMix effect stands out as the
+only new variable.
 
 Usage:
     python train_classifier_phase2_mixup.py --backbone vit_base_patch16_224 --fold 0
@@ -44,11 +45,11 @@ WARMUP_EPOCHS = 2
 
 
 class SoftTargetCrossEntropyWeighted(nn.Module):
-    """Cross-entropy against soft (MixUp/CutMix-blended) targets, with each
-    sample's loss weighted by the SAME lambda-interpolation of the class
-    weights that produced its soft target -- keeps inverse-frequency class
-    weighting mathematically consistent with the MixUp blend, rather than
-    applying class weights as if targets were still one-hot."""
+    """Cross-entropy against soft (MixUp/CutMix-blended) targets, where each
+    sample's loss is weighted by the SAME lambda-interpolation of the class
+    weights that generated its soft target -- this keeps inverse-frequency
+    class weighting mathematically consistent with the MixUp blend instead
+    of applying class weights as though targets were still one-hot."""
 
     def __init__(self, class_weights=None, gamma=0.0):
         super().__init__()
@@ -58,7 +59,7 @@ class SoftTargetCrossEntropyWeighted(nn.Module):
     def forward(self, logits, soft_targets):
         log_probs = F.log_softmax(logits, dim=1)
         if self.gamma > 0:
-            # focal per-kelas: (1-p_c)^gamma menekan contoh MUDAH, mengangkat yg SULIT
+            # per-class focal: (1-p_c)^gamma down-weights EASY examples, lifts HARD ones
             focal = (1.0 - log_probs.exp()).clamp(min=0.0).pow(self.gamma)
             loss_per_sample = -(soft_targets * focal * log_probs).sum(dim=1)
         else:
@@ -71,12 +72,13 @@ class SoftTargetCrossEntropyWeighted(nn.Module):
 
 def train_one_epoch_mixup(model, loader, optimizer, criterion, mixup_fn, device, warmup_scheduler=None,
                            manifold_mixup_alpha=0.0):
-    """manifold_mixup_alpha>0 mengaktifkan Manifold Mixup (Verma et al. 2019):
-    SETELAH pixel-space MixUp/CutMix (mixup_fn) biasa, fitur hasil backbone
-    (sebelum head) diinterpolasi lagi dgn pasangan acak dlm batch yg sama,
-    lambda baru ~ Beta(alpha,alpha), soft_targets dicampur dgn lambda YANG
-    SAMA -- regularizer di latent space, additive di atas pixel-mixup yg
-    sudah terbukti (bukan pengganti), spy efeknya bisa diisolasi bersih."""
+    """manifold_mixup_alpha>0 turns on Manifold Mixup (Verma et al. 2019):
+    AFTER the usual pixel-space MixUp/CutMix (mixup_fn), the backbone
+    features (pre-head) are interpolated once more with a random partner
+    inside the same batch, a new lambda ~ Beta(alpha,alpha), and soft_targets
+    are blended with that SAME lambda -- a latent-space regularizer, additive
+    on top of the proven pixel-mixup (not a replacement), so its effect can
+    be isolated cleanly."""
     model.train()
     total_loss, n = 0.0, 0
     for imgs, _, labels in loader:

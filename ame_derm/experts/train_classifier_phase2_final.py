@@ -1,30 +1,30 @@
-"""FINAL Phase 2 classification pipeline, built on top of the finalized
-Phase 1 segmentation (birnet_seg_phase1_final.py, dice=0.9099) and every
-methodological fix established but not yet fully assembled earlier this
-session:
+"""FINAL Phase 2 classification pipeline, sitting on the finalized Phase 1
+segmentation (birnet_seg_phase1_final.py, dice=0.9099) plus all the
+methodological fixes that were established but not yet fully wired
+together earlier this session:
 
-  1. Pre-cropped images (via birnet_generate_phase1_crops.py) instead of
-     on-the-fly mask prediction -- the new Phase 1 ensemble is too heavy
-     to run per-image per-epoch.
-  2. Proper 5-fold GroupKFold cross-validation (bf.stratified_ham_kfold),
-     not the old single-fold stratified_ham_split (which silently only
-     ever used fold 0 of a 7-fold split).
-  3. Checkpoint selection by macro-F1, not balanced accuracy (balanced
-     accuracy is recall-only and blind to precision damage from a class
-     being over-predicted at another's expense).
+  1. Pre-cropped images (through birnet_generate_phase1_crops.py) rather
+     than on-the-fly mask prediction -- the new Phase 1 ensemble is too
+     heavy for per-image per-epoch execution.
+  2. A proper 5-fold GroupKFold cross-validation (bf.stratified_ham_kfold),
+     instead of the old single-fold stratified_ham_split (which, without
+     saying so, only ever used fold 0 of a 7-fold split).
+  3. Checkpoint selection on macro-F1, not balanced accuracy (balanced
+     accuracy only sees recall and is blind to precision damage when one
+     class is over-predicted at another's expense).
   4. Inverse-frequency class weighting (bf.compute_inverse_freq_weights),
-     computed fresh from each fold's OWN train-set label distribution.
-  5. Augmentation applied only to the train split (val/test use the
-     deterministic val_aug).
-  6. Full determinism (bf.set_deterministic) including the albumentations-
-     seed and cuDNN fixes discovered earlier this session.
-  7. Discriminative LR + warmup (kept from train_classifier_cropped_v2.py --
-     a real, already-verified fix for the "peaks at epoch 2-3 then
+     recomputed fresh from each fold's OWN train-set label distribution.
+  5. Augmentation only on the train split (val/test use the deterministic
+     val_aug).
+  6. Full determinism (bf.set_deterministic), covering the albumentations-
+     seed and cuDNN fixes found earlier this session.
+  7. Discriminative LR + warmup (carried over from train_classifier_cropped_v2.py --
+     a real, already-verified cure for the "peaks at epoch 2-3 then
      degrades" fine-tuning instability pattern).
 
 Reports mean +/- std of test F1/accuracy/balanced-accuracy ACROSS ALL 5
-FOLDS (every image used as test exactly once), not a single lucky/unlucky
-split.
+FOLDS (every image used as test exactly once), rather than one
+lucky/unlucky split.
 
 Usage:
     python train_classifier_phase2_final.py --backbone vit_base_patch16_224
@@ -56,8 +56,8 @@ WARMUP_EPOCHS = 2
 
 class SkinLesionDatasetPrecomputedCrop(Dataset):
     """Loads ALREADY-CROPPED images (from birnet_generate_phase1_crops.py),
-    applies the same CLAHE + bilateral-filter preprocessing as every prior
-    crop experiment, then resizes. No mask prediction at load time."""
+    runs the same CLAHE + bilateral-filter preprocessing as all earlier crop
+    experiments, then resizes. No mask prediction happens at load time."""
 
     def __init__(self, df, img_size, transform=None, oversample=False,
                  target_per_class=None, num_classes=7, preprocess=True):

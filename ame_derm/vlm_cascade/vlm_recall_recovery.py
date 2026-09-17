@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Recall-recovery vasc: cari vasc yg MODEL LEWATKAN (prediksi non-vasc).
-Kandidat = model->non-vasc TERMERAH (vasc bersembunyi di bcc/df/mel). VLM tandai
+"""Recall-recovery vasc: lacak vasc yg DILEWATKAN MODEL (prediksi non-vasc).
+Kandidat = model->non-vasc paling MERAH (vasc bersembunyi di bcc/df/mel). VLM menandai
 yg JELAS red-lacunae -> relabel ke vasc. Gating ketat (hanya yg yakin).
 """
 import os, json, sys
@@ -27,7 +27,7 @@ def redness(iid):
 
 def build(n=16):
     ids, labs, preds, probs = load()
-    # kandidat: model prediksi non-vasc, tapi bisa jadi vasc (di bcc/df/mel/nv/bkl)
+    # kandidat: model memprediksi non-vasc, tapi mungkin vasc (di bcc/df/mel/nv/bkl)
     cand = [i for i in range(len(preds)) if preds[i] == 5   # model->df saja (5 vasc sembunyi di sini)
             and os.path.exists(os.path.join(CROP, f"{ids[i]}.jpg"))]
     cand = sorted(cand, key=lambda i: -redness(str(ids[i])))[:n]

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Step 7: matched-protocol comparison against the PanDerm foundation model
-(requires the separate PanDerm repository and its pretrained weights; see
+"""Step 7: matched-protocol comparison with the PanDerm foundation model (the
+separate PanDerm repository and its pretrained weights are required; see
 docs/DATA_PREPARATION.md).
 
-Thin wrapper around
-`python -m baselines.panderm_comparison.dinov2_official_protocol`; all CLI
-arguments are forwarded. Run `--help` for the full argument list. For the
-PanDerm-backboned MoE cell of the 2x2 comparison, use
+A thin wrapper over
+`python -m baselines.panderm_comparison.dinov2_official_protocol`; every CLI
+argument is forwarded. See `--help` for the complete argument list. For the
+PanDerm-backboned MoE cell of the 2x2 comparison, call
 `baselines.panderm_comparison.panderm_moe_prep` /
 `panderm_moe_eval` directly instead.
 """

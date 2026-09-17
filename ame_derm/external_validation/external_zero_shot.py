@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
 """ZERO-SHOT EXTERNAL VALIDATION (Strategi 1) — MoE champion fold 0-4 di BCN/MSK.
 
-Model dilatih 100% HAM10000 5-Fold (TIDAK pernah melihat BCN/MSK). Script ini
-menerapkan checkpoint fold-f yg SAMA (gen_pure + eksper torso/limb/head_v2)
-ke kohort eksternal sebagai BLIND TEST, lalu membandingkan:
+Model telah dilatih penuh 100% HAM10000 5-Fold (TIDAK pernah menyaksikan BCN/MSK).
+Skrip ini memakai checkpoint fold-f yang SAMA (gen_pure + eksper torso/limb/head_v2)
+pada kohort eksternal sebagai BLIND TEST, lantas membandingkan:
 
     - Generalist-only  (gen_pure)          -> baseline DINOv2 standar
     - Anatomical MoE   (head_v2, statis 0.8) -> BirNET
 
 protokol routing & blending IDENTIK dgn birnet_eval_moe_champion_5fold.py
-(weight_expert=0.8, TTA 6-view, meta = localization saja), jadi angka internal
+(weight_expert=0.8, TTA 6-view, meta = localization saja), sehingga angka internal
 0.8235 (fold-0 HAM test) tetap sebanding dengan angka eksternal di sini.
 
-Protokol label eksternal (diverifikasi konsisten dgn taksonomi HAM 7-kelas):
-    - BCN : makro-7 (smua kelas HAM hadir); SCC & unmappable di-drop
+Protokol label eksternal (terverifikasi konsisten dgn taksonomi HAM 7-kelas):
+    - BCN : makro-7 (smua kelas HAM ada); SCC & unmappable dibuang
     - MSK : makro-3 headline (mel/nv/bkl) + makro-5 suplemen (mel/nv/bkl/bcc/vasc)
-      kelas ultra-tipis df(9)/akiec(8) di-ekstra dgn catatan
+      kelas ultra-tipis df(9)/akiec(8) diekstrak dgn catatan
 
 Gambar: DEFAULT raw full-image dari panderm_datasets/ (MSK test tak punya crop;
 raw menjaga protokol seragam antar-kohort). Opsional --img_mode crop memakai
@@ -55,7 +55,7 @@ BCN_IMG = config.BCN_IMG
 MSK_CSV = "panderm_datasets/MSKCC/MSKCC/mskcc.csv"
 MSK_IMG = "panderm_datasets/MSKCC/MSKCC/images"
 
-# diagnosis -> label HAM (0-6, HAM_LABEL_MAP di birnet_final)
+# pemetaan diagnosis -> label HAM (0-6, HAM_LABEL_MAP di birnet_final)
 EXT_TO_LABEL = {
     "melanoma": 0, "nevus": 1, "basal cell carcinoma": 2,
     "seborrheic keratosis": 4, "solar lentigo": 4, "lichenoid keratosis": 4,
@@ -64,7 +64,7 @@ EXT_TO_LABEL = {
 }
 DROP_DX = {"squamous cell carcinoma", "melanoma metastasis", "atypical melanocytic proliferation"}
 
-# anatom_site_general eksternal -> kategori localization HAM (utk meta & routing)
+# anatom_site_general eksternal -> kategori localization HAM (untuk meta & routing)
 EXT_LOC_MAP = {
     "anterior torso": "abdomen", "posterior torso": "back", "lateral torso": "trunk",
     "head/neck": "neck", "lower extremity": "lower extremity",
@@ -77,7 +77,7 @@ MSK_MACRO5 = [0, 1, 2, 4, 6]  # mel/nv/bkl/bcc/vasc
 
 
 def build_external_df(source, img_mode):
-    """Kembalikan df eksternal bersih: image_id, path, label, localization."""
+    """Hasilkan df eksternal yang bersih: image_id, path, label, localization."""
     if source == "bcn":
         df = pd.read_csv(BCN_CSV)
         df = df[df["split"] == "test"]
@@ -115,8 +115,8 @@ def build_external_df(source, img_mode):
 
 
 class ExternalSkinLesionDataset(torch.utils.data.Dataset):
-    """Membaca raw/crop image + encoding metadata localization (mirip
-    SkinLesionDatasetMultimodal, tapi path gambar eksternal eksplisit)."""
+    """Memuat citra raw/crop + encoding metadata localization (serupa
+    SkinLesionDatasetMultimodal, namun path gambar eksternalnya eksplisit)."""
 
     def __init__(self, df, transform):
         self.df = df.reset_index(drop=True)
@@ -259,7 +259,7 @@ def main():
             for tag, subset in [("macro3", MSK_MACRO3), ("macro5", MSK_MACRO5)]:
                 row[f"gen_macro_{tag}"], row[f"n_{tag}"] = macro_on_subset(y, preds_gen, subset)
                 row[f"moe_macro_{tag}"], _ = macro_on_subset(y, preds_moe, subset)
-            # metrik global (seluruh kelas terlabel)
+            # metrik global (semua kelas berlabel)
             row["gen_bacc"] = float(balanced_accuracy_score(y, preds_gen))
             row["moe_bacc"] = float(balanced_accuracy_score(y, preds_moe))
             row["moe_acc"] = float(accuracy_score(y, preds_moe))

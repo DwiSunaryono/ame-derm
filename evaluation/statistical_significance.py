@@ -1,29 +1,30 @@
 #!/usr/bin/env python3
-"""Reproduces the paper's "Statistical Significance" subsection (Results,
-Section 3): two paired comparisons on the same five lesion-grouped
+"""Regenerates the paper's "Statistical Significance" subsection (Results,
+Section 3): two paired comparisons over the same five lesion-grouped
 cross-validation folds.
 
 1. AME-Derm (DINOv2, full pipeline) vs. PanDerm (dermatology foundation
    model) — the paper's headline, robust result: positive on 5/5 folds,
-   exact sign test p=0.031. Both sides of this comparison are raw,
-   independently-recomputed numbers: the DINOv2 generalist's per-fold
-   macro-F1 comes straight from `results/data/moe_champion_5fold_results
-   .json` (produced by `ame_derm.moe_fusion.eval_moe_champion_5fold`), and
-   PanDerm's per-fold macro-F1 is computed here from scratch, from PanDerm's
+   exact sign test p=0.031. Neither side of this comparison is taken on
+   trust; both are raw, independently-recomputed numbers. The DINOv2
+   generalist's per-fold macro-F1 is pulled straight from
+   `results/data/moe_champion_5fold_results
+   .json` (output of `ame_derm.moe_fusion.eval_moe_champion_5fold`), while
+   PanDerm's per-fold macro-F1 is derived here from scratch, out of PanDerm's
    own raw per-sample predictions in
-   `results/data/panderm_baseline/generalist_fold*_seed42_test.csv`, via
+   `results/data/panderm_baseline/generalist_fold*_seed42_test.csv`, through
    `sklearn.metrics.f1_score(true_label, predicted_label, average="macro")`
-   — nothing here is copied from the manuscript.
+   — nothing in this file is copied from the manuscript.
 
 2. AME-Derm (asymmetric MoE) vs. the capacity-matched symmetric MoE — the
-   paper's secondary, modest result (t(4)=2.30, p=0.041; described in the
-   manuscript itself as "small and borderline"). The asymmetric AME-Derm
-   model's own raw per-fold macro-F1 was not recovered from archived logs
-   (see docs/SYSTEM_DOCUMENTATION.md); what IS available is the manuscript's
-   reported per-fold difference (AME-Derm minus symmetric MoE, in points):
-   {+1.33, +0.71, +0.73, +1.81, -0.37}. A paired test only needs that
-   difference array, so it is tested directly (mathematically identical to
-   a paired t-test on two fold-matched sequences).
+   paper's secondary, modest result (t(4)=2.30, p=0.041; the manuscript
+   itself calls it "small and borderline"). The asymmetric AME-Derm
+   model's own raw per-fold macro-F1 could not be recovered from archived
+   logs (see docs/SYSTEM_DOCUMENTATION.md); what IS available is the
+   manuscript's reported per-fold difference (AME-Derm minus symmetric MoE,
+   in points): {+1.33, +0.71, +0.73, +1.81, -0.37}. Since a paired test
+   needs only that difference array, it is tested directly (mathematically
+   identical to a paired t-test on two fold-matched sequences).
 """
 import json
 import os
@@ -36,14 +37,14 @@ from sklearn.metrics import f1_score
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(os.path.dirname(HERE), "results", "data")
 
-# Per-fold difference (AME-Derm - symmetric MoE), macro-F1 points, as reported
-# in the manuscript (Results, Section 3, "Statistical Significance").
+# Per-fold difference (AME-Derm - symmetric MoE), in macro-F1 points, exactly
+# as the manuscript reports it (Results, Section 3, "Statistical Significance").
 PAPER_DELTAS_PTS = np.array([1.33, 0.71, 0.73, 1.81, -0.37])
 
 
 def sign_test_p_all_positive(n):
-    """Exact one-sided sign test p-value when all n paired differences are
-    positive under H0: P(positive) = 0.5."""
+    """Exact one-sided sign-test p-value for the case where every one of the n
+    paired differences is positive under H0: P(positive) = 0.5."""
     return stats.binomtest(n, n, 0.5, alternative="greater").pvalue
 
 
@@ -81,14 +82,14 @@ def panderm_comparison():
     print()
     print("  Full backbone x MoE 2x2 (macro-F1, %):")
     with open(os.path.join(DATA_DIR, "panderm_baseline", "moe_fold0_seed42.json")):
-        pass  # existence check
+        pass  # confirm the file exists
     panderm_moe = []
     for i in range(5):
         with open(os.path.join(DATA_DIR, "panderm_baseline", f"moe_fold{i}_seed42.json")) as f:
             panderm_moe.append(json.load(f)["moe_macro_f1"] * 100)
     panderm_moe = np.array(panderm_moe)
     symmetric_moe = np.array([r["champ_static_f1"] for r in moe_folds]) * 100
-    ame_derm = symmetric_moe + PAPER_DELTAS_PTS  # reconstructed, see module docstring
+    ame_derm = symmetric_moe + PAPER_DELTAS_PTS  # reconstructed value; refer to the module docstring
 
     print(f"    {'Backbone':10s} {'Single generalist':>18s} {'MoE':>10s}")
     print(f"    {'DINOv2':10s} {dinov2_gen.mean():18.2f} {ame_derm.mean():10.2f}  (AME-Derm; MoE column is reconstructed)")

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Step 6: retrain/evaluate on the independent BCN20000 cohort under the
-same lesion-grouped, matched-seed protocol used internally.
+"""Step 6: retrain and evaluate on the independent BCN20000 cohort, following
+the same lesion-grouped, matched-seed protocol applied internally.
 
-Thin wrapper around `python -m ame_derm.external_validation.retrain_bcn`;
-all CLI arguments are forwarded. Run `--help` for the full argument list.
-For zero/few-shot baselines instead of retraining, use
+A thin wrapper over `python -m ame_derm.external_validation.retrain_bcn`;
+every CLI argument is forwarded. See `--help` for the complete argument list.
+For zero/few-shot baselines rather than retraining, call
 `ame_derm.external_validation.external_zero_shot` /
 `external_fewshot_router` directly.
 """

@@ -1,28 +1,29 @@
-"""FINAL Phase 1 segmentation pipeline, locked in after exhaustive search:
-architecture search (7 encoders x 3 decoder families), full combinatorial
-ensemble mapping (63 combinations), refinement modules (BGFF, CBAM -- both
-rejected, consistently hurt), resolution search (224 vs 384 -- architecture-
-dependent, exhausted for our strongest models), TTA, guided filter,
-threshold optimization, extreme-lesion-size oversampling, and a crop-
-quality check (bbox-IoU vs ground truth, not just Dice) before finalizing.
+"""The FINAL Phase 1 segmentation pipeline, frozen after an exhaustive
+search covering: architecture search (7 encoders x 3 decoder families), a
+full combinatorial ensemble map (63 combinations), refinement modules
+(BGFF and CBAM -- both rejected, as they consistently hurt), resolution
+search (224 vs 384 -- architecture-dependent, and exhausted for our
+strongest models), TTA, guided filter, threshold optimization, extreme-
+lesion-size oversampling, and a crop-quality check (bbox-IoU against ground
+truth, not Dice alone) prior to finalizing.
 
-Pipeline (in order):
-  1. Three models, each with 4-way flip TTA:
+Pipeline, in order:
+  1. Three models, each applying 4-way flip TTA:
      - Segformer + mit_b3           (segformer_mitb3_foundation_seed42_best.pth)
      - UPerNet + tu-convnext_tiny   (upernet_convnext_foundation_seed42_best.pth)
      - UnetPlusPlus + resnet50, trained at 384x384, evaluated downsampled to
        224x224 (unetpp_resnet50_highres384_seed42_best.pth)
-  2. Simple mean of the 3 probability maps.
-  3. Guided filter (He et al. 2010, radius=30) using the original RGB image
-     (converted to grayscale) as the guide, for edge-aware refinement.
-  4. Threshold=0.46 (tuned on the 100-image val set, not test) instead of
+  2. A simple mean over the 3 probability maps.
+  3. Guided filter (He et al. 2010, radius=30) with the original RGB image
+     (converted to grayscale) as the guide, providing edge-aware refinement.
+  4. Threshold=0.46 (tuned on the 100-image val set, not test) rather than
      the naive 0.5 default.
-  5. Largest-connected-component filtering -- keeps only the single biggest
-     foreground blob, adopted after confirming it improves average
-     bounding-box IoU against ground truth (0.8454->0.8565) and reduces
-     moderately-bad crops (9.6%->9.0%) at a negligible Dice cost
-     (0.9105->0.9099), which matters because Phase 2's crop-then-classify
-     step depends on the predicted mask's bounding box, not raw Dice.
+  5. Largest-connected-component filtering -- retaining only the single
+     biggest foreground blob, adopted once it was confirmed to raise average
+     bounding-box IoU against ground truth (0.8454->0.8565) and cut down
+     moderately-bad crops (9.6%->9.0%) for a negligible Dice cost
+     (0.9105->0.9099). This matters because Phase 2's crop-then-classify
+     step relies on the predicted mask's bounding box rather than raw Dice.
 
 Final numbers (ISIC 2018 Task 1 test set, n=1000):
   Dice = 0.9099, mean bbox-IoU vs GT = 0.8565
@@ -88,7 +89,8 @@ def _largest_component_only(mask):
 
 
 class Phase1SegmentationPipeline:
-    """Loads the 3 champion checkpoints once; call .predict() per batch."""
+    """Loads the 3 champion checkpoints a single time; invoke .predict() for
+    each batch."""
 
     def __init__(self):
         self.models = {}
@@ -97,12 +99,13 @@ class Phase1SegmentationPipeline:
 
     @torch.no_grad()
     def predict(self, imgs_224, imgs_384=None):
-        """imgs_224: (B,3,224,224) normalized tensor, for mit_b3/convnext.
-        imgs_384: (B,3,384,384) normalized tensor of the SAME images, for
-        hr_resnet50 -- if None, imgs_224 is upsampled to 384 as a fallback
-        (less accurate than native 384x384 preprocessing, prefer passing it).
-        Returns: (B,1,224,224) binary float32 numpy array masks, after
-        ensembling + guided filter + threshold + LCC filtering."""
+        """imgs_224: (B,3,224,224) normalized tensor, used by mit_b3/convnext.
+        imgs_384: (B,3,384,384) normalized tensor holding the SAME images,
+        used by hr_resnet50 -- when None, imgs_224 gets upsampled to 384 as a
+        fallback (less accurate than native 384x384 preprocessing, so prefer
+        passing it). Returns: (B,1,224,224) binary float32 numpy array masks,
+        produced after ensembling + guided filter + threshold + LCC
+        filtering."""
         imgs_224 = imgs_224.to(DEVICE)
         if imgs_384 is None:
             imgs_384 = F.interpolate(imgs_224, size=(384, 384), mode="bilinear", align_corners=False)

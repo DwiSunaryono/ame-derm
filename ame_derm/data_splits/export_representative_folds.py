@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """
-Ekspor 5-fold KETAT champion (fully_representative + lesion-grouped, stratify
-label+dataset) ke CSV per-fold, supaya PanDerm & DINOv2 bisa diadu di fold yang
-IDENTIK dengan MoE champion (protokol ketat, bukan single-split label-only mereka).
+Export the champion's STRICT 5-fold (fully_representative + lesion-grouped,
+stratify label+dataset) into one CSV per fold, so PanDerm & DINOv2 can be
+pitched against folds that are IDENTICAL to the MoE champion's (strict
+protocol, not their own label-only single split).
 
-Mereproduksi konstruksi df + split PERSIS seperti birnet_eval_hybrid_council.py.
-Output: <out>/rep_fold{0..4}.csv dgn kolom [image,label,split,localization,lesion_id,image_id]
-  - 'image' = <image_id>.jpg  (cocok utk full-image ISIC2018/ maupun crop)
-  - 'split' = train/val/test utk fold itu
-Kompatibel dgn PanDerm run_class_finetuning (--csv_path) & birnet_dinov2_official_protocol.py (--csv).
+Rebuilds the df + split EXACTLY as birnet_eval_hybrid_council.py does.
+Output: <out>/rep_fold{0..4}.csv with columns [image,label,split,localization,lesion_id,image_id]
+  - 'image' = <image_id>.jpg  (works for full-image ISIC2018/ as well as crop)
+  - 'split' = train/val/test for that fold
+Compatible with PanDerm run_class_finetuning (--csv_path) & birnet_dinov2_official_protocol.py (--csv).
 """
 import os, argparse
 import numpy as np, pandas as pd
@@ -30,7 +31,7 @@ def main():
     cfg = bf.Config()
     paths = bf.DatasetPaths(cfg)
     ham_df = bf.build_ham10000_dataframe(paths)
-    # filter ke gambar yg punya crop (identik dgn champion) -> set sampel sama
+    # keep only images with a crop (same as champion) -> identical sample set
     has = ham_df["image_id"].apply(lambda i: os.path.exists(os.path.join(CROP_DIR, f"{i}.jpg")))
     ham_df = ham_df[has].reset_index(drop=True)
     print(f"ham_df (crop-exist filter): {len(ham_df)} sampel, {ham_df['lesion_id'].nunique()} lesi, "
@@ -46,12 +47,12 @@ def main():
         df["split"] = "train"
         df.loc[va, "split"] = "val"
         df.loc[te, "split"] = "test"
-        # hanya baris yg ikut fold ini (train=tr, val=va, test=te) -> semua ham_df ikut (train sisanya)
+        # only rows belonging to this fold (train=tr, val=va, test=te) -> all ham_df rows included (rest as train)
         out = df.loc[np.concatenate([tr, va, te])].copy()
         out["image"] = out["image_id"].astype(str) + ".jpg"
         cols = ["image", "label", "split", "localization", "lesion_id", "image_id"]
         out = out[cols].reset_index(drop=True)
-        # verifikasi tak ada leakage lesi antar-split (double-check)
+        # confirm no lesion leakage between splits (double-check)
         s = {k: set(out[out.split == k]["lesion_id"]) for k in ["train", "val", "test"]}
         assert s["train"].isdisjoint(s["val"]) and s["train"].isdisjoint(s["test"]) and s["val"].isdisjoint(s["test"])
         path = os.path.join(args.out, f"rep_fold{fi}.csv")

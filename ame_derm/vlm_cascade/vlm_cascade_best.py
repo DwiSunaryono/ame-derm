@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""VLM-cascade di model TERBAIK (dump birnet_diag_bcn_best_test.json, ada image_id).
-Gating KETAT: default = pertahankan prediksi model. VLM hanya menolak yg JELAS
-bukan-vasc (no lacunae). Yg ditolak -> reassign 2nd-choice HANYA jika prob-2 kuat.
+"""VLM-cascade pada model TERBAIK (dump birnet_diag_bcn_best_test.json, ada image_id).
+Gating KETAT: default = pertahankan prediksi model. VLM cuma menolak yg JELAS
+bukan-vasc (no lacunae). Yg ditolak -> reassign 2nd-choice HANYA bila prob-2 kuat.
 
 build: montase semua model->vasc + kunci.
-apply "<reject_idx>": idx yg VLM YAKIN bukan-vasc -> reassign; sisanya biarkan model.
+apply "<reject_idx>": idx yg VLM YAKIN bukan-vasc -> reassign; selebihnya biarkan model.
 """
 import os, json, sys
 import numpy as np, cv2
@@ -54,7 +54,7 @@ def apply(reject, min_prob2=0.0):
     key = {k['idx']: k for k in json.load(open(KEY))}
     new = preds.copy(); n_re = 0
     for idx, k in key.items():
-        if idx in reject and k['second_prob'] >= min_prob2:   # VLM yakin bukan-vasc & 2nd kuat
+        if idx in reject and k['second_prob'] >= min_prob2:   # VLM yakin bukan-vasc dan pilihan-2 kuat
             new[_row(ids, k['id'])] = k['second_lbl']; n_re += 1
     before = f1_score(labs, preds, average='macro', zero_division=0)
     after = f1_score(labs, new, average='macro', zero_division=0)
