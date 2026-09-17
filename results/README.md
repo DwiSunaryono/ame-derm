@@ -18,6 +18,7 @@ re-running the pipeline — just arithmetic over data that's already here.
 | [`tables/panderm_comparison.csv`](tables/panderm_comparison.csv) | **Headline table.** DINOv2 generalist vs. PanDerm generalist, per fold — both sides raw. |
 | [`tables/panderm_seed_robustness.csv`](tables/panderm_seed_robustness.csv) | PanDerm mean±std at seeds 42 and 122 — confirms the ranking isn't a favorable-seed artifact. |
 | [`tables/main_ablation_ladder.csv`](tables/main_ablation_ladder.csv) | Secondary/modest result: generalist vs. symmetric MoE vs. AME-Derm, macro-F1 mean ± std over 5 folds. |
+| [`tables/main_ablation_ladder_per_fold.csv`](tables/main_ablation_ladder_per_fold.csv) | The same result broken out per fold, so "4 of 5 folds favor AME-Derm" is something you can check, not just a claim in prose. |
 | [`tables/external_validation_bcn.csv`](tables/external_validation_bcn.csv) | Macro-F1 on the BCN20000 test set, one row per run/seed. |
 | [`tables/split_audit_summary.csv`](tables/split_audit_summary.csv) | Split-representativeness audit, averaged over folds. |
 

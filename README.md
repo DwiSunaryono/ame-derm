@@ -156,18 +156,33 @@ The manuscript itself calls it "small and borderline," and we agree:
 | Symmetric MoE (base experts + base generalist) | 80.97 ± 1.58 |
 | AME-Derm (asymmetric) | 81.82 ± 1.82 |
 
-Paired *t*-test: *t*(4) = 2.30, *p* = 0.041. Wilcoxon signed-rank:
-*p* ≈ 0.062 (manuscript: 0.063). Only 4 of 5 folds favor AME-Derm here — a
-real margin, but nowhere near as clean as the PanDerm result above, which
-is why the manuscript leans on mechanism and fold-wise consistency rather
-than significance alone for this particular claim.
+Those are means — here's the per-fold breakdown that the "4 of 5 folds"
+claim below actually comes from:
 
-*Note: we couldn't recover the asymmetric AME-Derm model's raw per-fold
-output from archived logs, so its row above (and its cell in the 2×2 table)
-is the raw symmetric-MoE score plus the per-fold delta reported in the
-manuscript, not an independent measurement. Everything else on this page
-is raw. See [`results/README.md`](results/README.md) for the full
-breakdown of what's raw versus manuscript-sourced.*
+| Fold | Symmetric MoE | AME-Derm | Δ |
+|---|---|---|---|
+| 0 | 82.35 | 83.68 | +1.33 |
+| 1 | 79.19 | 79.90 | +0.71 |
+| 2 | 79.34 | 80.07 | +0.73 |
+| 3 | 81.74 | 83.55 | +1.81 |
+| 4 | 82.25 | 81.88 | **−0.37** |
+
+Fold 4 is where AME-Derm actually loses — that's the one fold out of five
+that doesn't favor it. Paired *t*-test on these five deltas:
+*t*(4) = 2.30, *p* = 0.041. Wilcoxon signed-rank: *p* ≈ 0.062 (manuscript:
+0.063). It's a real margin, but nowhere near as clean as the PanDerm result
+above (which won every fold), which is why the manuscript leans on
+mechanism and fold-wise consistency rather than significance alone for this
+particular claim.
+
+*Note: the Symmetric MoE column is raw (`champ_static_f1`, straight from
+`moe_champion_5fold_results.json`). The AME-Derm column is not an
+independent measurement — we couldn't recover the asymmetric model's own
+per-fold output from archived logs, so it's reconstructed as Symmetric MoE
+plus the per-fold delta the manuscript reports (which is also exactly the
+Δ column above). Everything else on this page is raw. See
+[`results/README.md`](results/README.md) for the full breakdown of what's
+raw versus manuscript-sourced.*
 
 ### External validation on BCN20000
 

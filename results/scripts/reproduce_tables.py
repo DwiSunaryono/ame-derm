@@ -18,6 +18,9 @@ Produces:
     tables/main_ablation_ladder.csv     - secondary/modest result: generalist
                                            vs. symmetric MoE vs. AME-Derm
                                            (see caveat below)
+    tables/main_ablation_ladder_per_fold.csv - the same result, per fold, so
+                                           the "4 of 5 folds" claim is
+                                           checkable instead of asserted
     tables/external_validation_bcn.csv  - per-seed macro-F1 on the BCN20000
                                            external test set
     tables/split_audit_summary.csv      - per-field split-representativeness
@@ -137,6 +140,18 @@ def main_ablation_ladder():
         ["method", "macro_f1_mean_pct", "macro_f1_std_pct"],
         rows,
     )
+
+    fold_rows = [
+        (i, f"{symmetric_moe[i]:.2f}", f"{ame_derm[i]:.2f}", f"{PAPER_DELTAS_PTS[i]:+.2f}")
+        for i in range(5)
+    ]
+    write_csv(
+        os.path.join(TABLES_DIR, "main_ablation_ladder_per_fold.csv"),
+        ["fold", "symmetric_moe_macro_f1_pct", "ame_derm_macro_f1_pct", "delta_pct"],
+        fold_rows,
+    )
+    n_positive = int((PAPER_DELTAS_PTS > 0).sum())
+    print(f"  -> AME-Derm favored on {n_positive}/5 folds (paper: 4/5)")
 
 
 def external_validation_bcn():
