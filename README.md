@@ -204,32 +204,9 @@ exactly the Δ column above). Everything else on this page is raw. See
 [`results/README.md`](results/README.md) for the full breakdown of what's
 raw versus manuscript-sourced.*
 
-### External validation on BCN20000
-
-**Table R5** — Macro-F1 on the BCN20000 test set, one row per checkpoint/seed
-*(related to paper Table 15,* `tab:vlm-cascade`*, whose "base" rows report
-the narrower 54.70–58.47 range for 3 selected folds — Table R5 is a wider,
-9-run sweep, not a reproduction of that exact table)*. Computed fresh from
-raw per-sample predictions (`sklearn.metrics.f1_score(labs, preds,
-average="macro")`):
-
-| Run | n (test) | Macro-F1 |
-|---|---|---|
-| best checkpoint | 2,397 | 56.10 |
-| generalist-only | 2,397 | 50.98 |
-| seed 7 | 2,396 | 57.70 |
-| seed 123 | 2,397 | 57.47 |
-| seed 314 | 2,397 | 54.70 |
-| seed 555 | 2,397 | 61.34 |
-| seed 777 | 2,397 | 58.47 |
-| seed 888 | 2,397 | 55.63 |
-| seed 999 | 2,397 | 63.97 |
-
-Full data in [`results/data/bcn_external/`](results/data/bcn_external).
-
 ### Split-representativeness audit
 
-**Table R6** — Split-representativeness audit, averaged over folds
+**Table R5** — Split-representativeness audit, averaged over folds
 *(supporting data for paper Table 4,* `tab:protocol`*, and the
 "lesion-grouped, metadata-representative" claims in §Experimental
 Protocols)*.

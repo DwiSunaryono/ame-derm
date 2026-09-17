@@ -20,8 +20,8 @@ re-running the pipeline — just arithmetic over data that's already here.
 | [`tables/panderm_seed_robustness.csv`](tables/panderm_seed_robustness.csv) | PanDerm mean±std at seeds 42 and 122 — confirms the ranking isn't a favorable-seed artifact (paper §"Comparison with a Dermatology Foundation Model"). |
 | [`tables/main_ablation_ladder.csv`](tables/main_ablation_ladder.csv) | **README Table R3.** Generalist vs. symmetric MoE vs. AME-Derm, mean ± std over 5 folds — three of the five rows of paper Table 7 (`tab:main`). |
 | [`tables/main_ablation_ladder_per_fold.csv`](tables/main_ablation_ladder_per_fold.csv) | **README Table R4.** The same result broken out per fold — supporting data for paper Table 11 (`tab:stats`), so "4 of 5 folds favor AME-Derm" is something you can check, not just a claim in prose. |
-| [`tables/external_validation_bcn.csv`](tables/external_validation_bcn.csv) | **README Table R5.** Macro-F1 on the BCN20000 test set, one row per run/seed. Related to paper Table 15 (`tab:vlm-cascade`), but a wider 9-run sweep, not that exact table. |
-| [`tables/split_audit_summary.csv`](tables/split_audit_summary.csv) | **README Table R6.** Split-representativeness audit, averaged over folds — supporting data for paper Table 4 (`tab:protocol`). |
+| [`tables/external_validation_bcn.csv`](tables/external_validation_bcn.csv) | Supplementary data, not narrated in the top-level README (external validation is additional context in the manuscript, not part of its core PanDerm-comparison claim). Macro-F1 on the BCN20000 test set, one row per run/seed; related to paper Table 15 (`tab:vlm-cascade`), but a wider 9-run sweep. See the manuscript's External Validation section for interpretation. |
+| [`tables/split_audit_summary.csv`](tables/split_audit_summary.csv) | **README Table R5.** Split-representativeness audit, averaged over folds — supporting data for paper Table 4 (`tab:protocol`). |
 
 ## Reproduce
 
