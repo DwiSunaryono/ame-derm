@@ -1,8 +1,8 @@
 # Results
 
-Raw per-fold / per-sample outputs backing three of the paper's numeric
-claims, plus a script that regenerates CSV tables from them deterministically
-— no training, no GPU, no re-running the pipeline.
+Raw per-fold and per-sample outputs behind several of the paper's numbers,
+plus a script that turns them into CSV tables. No training, no GPU, no
+re-running the pipeline — just arithmetic over data that's already here.
 
 ## Contents
 
@@ -28,27 +28,29 @@ cd results
 python scripts/reproduce_tables.py
 ```
 
-## What this does and does not prove
+## What's raw and what isn't
 
-- **The headline result (`panderm_comparison.csv`) is fully raw on both
-  sides** — PanDerm's macro-F1 is computed here from its own per-sample
-  predictions (`sklearn.metrics.f1_score`), not copied from the manuscript,
-  and matches the manuscript's reported 75.34 to 4 decimal places. This is
-  the paper's own "more robust" result (5/5 folds positive, exact sign test
-  p=0.031) — stronger than the ablation below, which the manuscript itself
-  calls "small and borderline."
-- `gen_only_f1` / `champ_static_f1` in `moe_champion_5fold_results.json` are
-  **raw, independently re-derivable** numbers (this repo's `reproduce_tables.py`
-  computes their mean/std directly; nothing is hand-transcribed).
-- The **AME-Derm** row of `main_ablation_ladder.csv` is `champ_static_f1` plus
-  the per-fold delta reported in the manuscript's Results section
-  ({+1.33, +0.71, +0.73, +1.81, -0.37} points) — the asymmetric model's own
-  raw per-fold macro-F1 was not recovered from archived logs (see
-  `../docs/SYSTEM_DOCUMENTATION.md`). The statistical-significance test in
-  [`../evaluation/statistical_significance.py`](../evaluation/statistical_significance.py)
-  only needs that delta array, so it is not affected by this — running it
-  reproduces the manuscript's reported t(4)=2.30, p=0.041 (paired t-test) and
-  p≈0.062 (Wilcoxon signed-rank) exactly.
-- `external_validation_bcn.csv` is a genuine, from-scratch macro-F1
-  computation (`sklearn.metrics.f1_score(labs, preds, average="macro")`) over
-  each run's real per-sample predictions — not copied from the paper.
+**`panderm_comparison.csv` is raw on both sides.** PanDerm's macro-F1 is
+computed here from its own per-sample predictions, and it lands on 75.34 —
+matching the manuscript to four decimal places. This is also the paper's
+strongest result: 5 of 5 folds positive, exact sign test p=0.031. Treat it
+as the one to trust most.
+
+**`moe_champion_5fold_results.json` is raw too.** Its `gen_only_f1` and
+`champ_static_f1` columns are exactly what
+`ame_derm.moe_fusion.eval_moe_champion_5fold` produced; `reproduce_tables.py`
+just computes the mean and std, nothing is hand-typed.
+
+**The AME-Derm row in `main_ablation_ladder.csv` is the one exception.** We
+never recovered the asymmetric model's own per-fold macro-F1 from archived
+logs, so that row is `champ_static_f1` plus the per-fold delta the
+manuscript reports ({+1.33, +0.71, +0.73, +1.81, −0.37} points) — a
+reconstruction, not a fresh measurement (see `../docs/SYSTEM_DOCUMENTATION.md`
+for how this happened). This doesn't affect the significance test, though:
+[`../evaluation/statistical_significance.py`](../evaluation/statistical_significance.py)
+only needs that delta array, and running it reproduces the manuscript's
+t(4)=2.30, p=0.041 (paired t-test) and p≈0.062 (Wilcoxon) exactly.
+
+**`external_validation_bcn.csv` is raw as well** — a fresh
+`sklearn.metrics.f1_score(labs, preds, average="macro")` over each run's
+real per-sample predictions, not anything copied from the paper.

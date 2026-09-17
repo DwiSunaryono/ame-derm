@@ -25,10 +25,9 @@ retraining. The method is validated internally on HAM10000 (lesion-grouped
 against the PanDerm dermatology foundation model under a matched training
 protocol.
 
-This repository contains the implementation, the raw per-fold/per-sample
-results backing the paper's headline numbers, and a script that regenerates
-the corresponding tables deterministically — no training, no GPU, no API
-calls required to check them.
+This repository contains the implementation, the raw results behind the
+paper's headline numbers, and a script that turns them into tables you can
+check yourself — no training, no GPU, no API calls needed.
 
 ## Contents
 
@@ -112,11 +111,11 @@ cd results
 python scripts/reproduce_tables.py
 ```
 
-### Headline result: DINOv2 (AME-Derm's backbone) beats the PanDerm foundation model
+### Headline result: DINOv2 beats the PanDerm foundation model
 
-The paper's most robust claim, and — unlike every table below it — **both
-sides of this comparison are computed from scratch in this repository**:
-PanDerm's macro-F1 is recomputed here from its own raw per-sample
+This is the paper's strongest claim, and the one we can verify most
+cleanly: both sides are computed from scratch in this repository. PanDerm's
+macro-F1 is recomputed here directly from its own raw per-sample
 predictions, not copied from the manuscript.
 
 ```bash
@@ -132,40 +131,48 @@ python evaluation/statistical_significance.py
 | 4 | 82.88 | 78.56 | +4.33 |
 | **mean** | **80.00** | **75.34** | **+4.66** |
 
-**5 of 5 folds favor DINOv2** (exact sign test *p* = 0.031; paired *t*-test
-*p* = 0.001) — reproducing the manuscript's reported +4.7 points, matching
-to within rounding. The full backbone × MoE 2×2 (Table `tab:2x2`) is:
+DINOv2 wins all 5 folds (exact sign test *p* = 0.031; paired *t*-test
+*p* = 0.001), reproducing the manuscript's reported +4.7-point gap almost
+exactly. The full backbone × MoE 2×2 (Table `tab:2x2`) looks like this:
 
 | Backbone | Single generalist | MoE |
 |---|---|---|
-| DINOv2 | 80.00 (raw) | **81.82** (AME-Derm; reconstructed†) |
-| PanDerm | 75.34 (raw) | 77.34 (raw) |
+| DINOv2 | 80.00 | **81.82** (AME-Derm) |
+| PanDerm | 75.34 | 77.34 |
 
-Full per-fold data in [`results/tables/panderm_comparison.csv`](results/tables/panderm_comparison.csv).
+Every number here is raw except the AME-Derm cell — see the note below the
+next table for why. Full per-fold data:
+[`results/tables/panderm_comparison.csv`](results/tables/panderm_comparison.csv).
 
-### Secondary result: asymmetric vs. symmetric MoE (modest, borderline)
+### Secondary result: asymmetric vs. symmetric MoE
 
-The paper's *other* headline comparison — whether the asymmetric mixture
-improves on a capacity-matched symmetric mixture — is a much smaller effect
-that the manuscript itself calls "small and borderline":
+The manuscript's other headline comparison — does the asymmetric mixture
+beat a capacity-matched symmetric one — is a real but much smaller effect.
+The manuscript itself calls it "small and borderline," and we agree:
 
 | Method | Macro-F1 |
 |---|---|
 | Single DINOv2 generalist | 80.00 ± 1.69 |
 | Symmetric MoE (base experts + base generalist) | 80.97 ± 1.58 |
-| AME-Derm (asymmetric)† | 81.82 ± 1.82 |
+| AME-Derm (asymmetric) | 81.82 ± 1.82 |
 
-Paired *t*-test: *t*(4)=2.30, *p*=0.041; Wilcoxon signed-rank: *p*≈0.062
-(manuscript: 0.063) — only 4 of 5 folds favor AME-Derm here. The manuscript
-rests this claim on mechanism and fold-wise consistency as much as on
-significance; the PanDerm comparison above is the more robust result.
+Paired *t*-test: *t*(4) = 2.30, *p* = 0.041. Wilcoxon signed-rank:
+*p* ≈ 0.062 (manuscript: 0.063). Only 4 of 5 folds favor AME-Derm here — a
+real margin, but nowhere near as clean as the PanDerm result above, which
+is why the manuscript leans on mechanism and fold-wise consistency rather
+than significance alone for this particular claim.
 
-*† Raw per-fold output for the asymmetric AME-Derm row was not recovered
-from archived logs; this row is `champ_static_f1` (raw) plus the per-fold
-delta reported in the manuscript. See [`results/README.md`](results/README.md)
-for exactly what is raw vs. manuscript-sourced.*
+*Note: we couldn't recover the asymmetric AME-Derm model's raw per-fold
+output from archived logs, so its row above (and its cell in the 2×2 table)
+is the raw symmetric-MoE score plus the per-fold delta reported in the
+manuscript, not an independent measurement. Everything else on this page
+is raw. See [`results/README.md`](results/README.md) for the full
+breakdown of what's raw versus manuscript-sourced.*
 
-### External validation on BCN20000 (macro-F1, %, computed from raw per-sample predictions)
+### External validation on BCN20000
+
+Macro-F1 computed fresh from raw per-sample predictions
+(`sklearn.metrics.f1_score(labs, preds, average="macro")`):
 
 | Run | n (test) | Macro-F1 |
 |---|---|---|
@@ -179,19 +186,21 @@ for exactly what is raw vs. manuscript-sourced.*
 | seed 888 | 2,397 | 55.63 |
 | seed 999 | 2,397 | 63.97 |
 
-The manuscript reports a fold-level range of 54.70–58.47 on the specific
-three-fold cascade table (`tab:vlm-cascade`); the wider spread above is the
-full nine-run multi-seed sweep in [`results/data/bcn_external/`](results/data/bcn_external),
-computed fresh with `sklearn.metrics.f1_score(labs, preds, average="macro")`.
+The manuscript's three-fold cascade table (`tab:vlm-cascade`) reports a
+narrower 54.70–58.47 range; the wider spread above comes from running all
+nine seeds we have data for, in
+[`results/data/bcn_external/`](results/data/bcn_external), not just the
+three the manuscript selected.
 
 ### Split-representativeness audit
 
-The lesion-grouped 5-fold split has **zero lesion leakage** (fixed from an
-earlier, non-grouped split that leaked 34.8%/36.1% of test/val images — see
-[`docs/SYSTEM_DOCUMENTATION.md`](docs/SYSTEM_DOCUMENTATION.md)) and stays
-within a mean absolute deviation of ≤0.7pp and max ≤3.1pp from the global
-class/dataset/sex/localization/age distribution across folds; full breakdown
-in [`results/tables/split_audit_summary.csv`](results/tables/split_audit_summary.csv).
+The lesion-grouped 5-fold split has zero lesion leakage — a real fix from
+an earlier, non-grouped split that leaked 34.8%/36.1% of test/val images
+(see [`docs/SYSTEM_DOCUMENTATION.md`](docs/SYSTEM_DOCUMENTATION.md) for the
+story). It also stays close to the global class/dataset/sex/localization/age
+distribution across folds: mean deviation ≤0.7pp, worst case ≤3.1pp. Full
+breakdown in
+[`results/tables/split_audit_summary.csv`](results/tables/split_audit_summary.csv).
 
 ## Configuration
 
