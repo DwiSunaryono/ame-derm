@@ -1,0 +1,3 @@
+backbone,single_generalist_macro_f1_pct,moe_macro_f1_pct
+DINOv2,80.00,81.82 (AME-Derm; reconstructed)
+PanDerm,75.34,77.34

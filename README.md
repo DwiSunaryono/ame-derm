@@ -111,6 +111,13 @@ cd results
 python scripts/reproduce_tables.py
 ```
 
+Every table below is captioned with the specific manuscript table it
+reproduces or supports, e.g. *"→ paper Table 10 (`tab:2x2`)"*, using the
+manuscript's own table numbers (in the order tables appear across the whole
+paper, methods section first). Tables marked **"supporting data for"**
+aren't themselves in the paper — they're the per-fold numbers behind a
+paper table that only reports the mean.
+
 ### Headline result: DINOv2 beats the PanDerm foundation model
 
 This is the paper's strongest claim, and the one we can verify most
@@ -121,6 +128,10 @@ predictions, not copied from the manuscript.
 ```bash
 python evaluation/statistical_significance.py
 ```
+
+**Table R1** — DINOv2 vs. PanDerm generalist, per fold *(supporting data for
+paper Table 7* `tab:main` *and Table 11* `tab:stats`*, row "DINOv2 vs.
+PanDerm (backbone)")*:
 
 | Fold | DINOv2 generalist | PanDerm generalist | Δ |
 |---|---|---|---|
@@ -133,15 +144,17 @@ python evaluation/statistical_significance.py
 
 DINOv2 wins all 5 folds (exact sign test *p* = 0.031; paired *t*-test
 *p* = 0.001), reproducing the manuscript's reported +4.7-point gap almost
-exactly. The full backbone × MoE 2×2 (Table `tab:2x2`) looks like this:
+exactly.
+
+**Table R2** — Backbone × MoE, 2×2 *(→ paper Table 10,* `tab:2x2`*)*:
 
 | Backbone | Single generalist | MoE |
 |---|---|---|
 | DINOv2 | 80.00 | **81.82** (AME-Derm) |
 | PanDerm | 75.34 | 77.34 |
 
-Every number here is raw except the AME-Derm cell — see the note below the
-next table for why. Full per-fold data:
+Every number here is raw except the AME-Derm cell — see the note under
+Table R4 below for why. Full per-fold data:
 [`results/tables/panderm_comparison.csv`](results/tables/panderm_comparison.csv).
 
 ### Secondary result: asymmetric vs. symmetric MoE
@@ -150,14 +163,21 @@ The manuscript's other headline comparison — does the asymmetric mixture
 beat a capacity-matched symmetric one — is a real but much smaller effect.
 The manuscript itself calls it "small and borderline," and we agree:
 
+**Table R3** — Main ablation ladder, generalist vs. symmetric MoE vs.
+AME-Derm *(→ paper Table 7,* `tab:main`*, three of its five rows)*:
+
 | Method | Macro-F1 |
 |---|---|
 | Single DINOv2 generalist | 80.00 ± 1.69 |
 | Symmetric MoE (base experts + base generalist) | 80.97 ± 1.58 |
 | AME-Derm (asymmetric) | 81.82 ± 1.82 |
 
-Those are means — here's the per-fold breakdown that the "4 of 5 folds"
-claim below actually comes from:
+Table R3 only has means. **Table R4** below is the per-fold breakdown behind
+it — this is where the "4 of 5 folds" claim in paper Table 11 (`tab:stats`,
+row "AME-Derm vs. symmetric MoE") actually comes from:
+
+**Table R4** — Table R3, per fold *(supporting data for paper Table 11,*
+`tab:stats`*)*:
 
 | Fold | Symmetric MoE | AME-Derm | Δ |
 |---|---|---|---|
@@ -170,24 +190,28 @@ claim below actually comes from:
 Fold 4 is where AME-Derm actually loses — that's the one fold out of five
 that doesn't favor it. Paired *t*-test on these five deltas:
 *t*(4) = 2.30, *p* = 0.041. Wilcoxon signed-rank: *p* ≈ 0.062 (manuscript:
-0.063). It's a real margin, but nowhere near as clean as the PanDerm result
-above (which won every fold), which is why the manuscript leans on
-mechanism and fold-wise consistency rather than significance alone for this
-particular claim.
+0.063). It's a real margin, but nowhere near as clean as the DINOv2-vs-
+PanDerm result in Table R1/R2 above (which won every fold), which is why
+the manuscript leans on mechanism and fold-wise consistency rather than
+significance alone for this particular claim.
 
-*Note: the Symmetric MoE column is raw (`champ_static_f1`, straight from
-`moe_champion_5fold_results.json`). The AME-Derm column is not an
-independent measurement — we couldn't recover the asymmetric model's own
-per-fold output from archived logs, so it's reconstructed as Symmetric MoE
-plus the per-fold delta the manuscript reports (which is also exactly the
-Δ column above). Everything else on this page is raw. See
+*Note: in Table R4, the Symmetric MoE column is raw (`champ_static_f1`,
+straight from `moe_champion_5fold_results.json`). The AME-Derm column is
+not an independent measurement — we couldn't recover the asymmetric
+model's own per-fold output from archived logs, so it's reconstructed as
+Symmetric MoE plus the per-fold delta the manuscript reports (which is also
+exactly the Δ column above). Everything else on this page is raw. See
 [`results/README.md`](results/README.md) for the full breakdown of what's
 raw versus manuscript-sourced.*
 
 ### External validation on BCN20000
 
-Macro-F1 computed fresh from raw per-sample predictions
-(`sklearn.metrics.f1_score(labs, preds, average="macro")`):
+**Table R5** — Macro-F1 on the BCN20000 test set, one row per checkpoint/seed
+*(related to paper Table 15,* `tab:vlm-cascade`*, whose "base" rows report
+the narrower 54.70–58.47 range for 3 selected folds — Table R5 is a wider,
+9-run sweep, not a reproduction of that exact table)*. Computed fresh from
+raw per-sample predictions (`sklearn.metrics.f1_score(labs, preds,
+average="macro")`):
 
 | Run | n (test) | Macro-F1 |
 |---|---|---|
@@ -201,13 +225,14 @@ Macro-F1 computed fresh from raw per-sample predictions
 | seed 888 | 2,397 | 55.63 |
 | seed 999 | 2,397 | 63.97 |
 
-The manuscript's three-fold cascade table (`tab:vlm-cascade`) reports a
-narrower 54.70–58.47 range; the wider spread above comes from running all
-nine seeds we have data for, in
-[`results/data/bcn_external/`](results/data/bcn_external), not just the
-three the manuscript selected.
+Full data in [`results/data/bcn_external/`](results/data/bcn_external).
 
 ### Split-representativeness audit
+
+**Table R6** — Split-representativeness audit, averaged over folds
+*(supporting data for paper Table 4,* `tab:protocol`*, and the
+"lesion-grouped, metadata-representative" claims in §Experimental
+Protocols)*.
 
 The lesion-grouped 5-fold split has zero lesion leakage — a real fix from
 an earlier, non-grouped split that leaked 34.8%/36.1% of test/val images

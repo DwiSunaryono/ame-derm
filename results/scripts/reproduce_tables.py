@@ -9,18 +9,20 @@ Run from the results/ directory:
     python scripts/reproduce_tables.py
 
 Produces:
-    tables/panderm_comparison.csv       - HEADLINE result: DINOv2 (AME-Derm's
-                                           backbone) vs. PanDerm, per fold,
-                                           fully raw on both sides
+    tables/panderm_comparison.csv       - README Table R1 / HEADLINE result:
+                                           DINOv2 (AME-Derm's backbone) vs.
+                                           PanDerm, per fold, fully raw
+    tables/backbone_moe_2x2.csv         - README Table R2 -> paper Table 10
+                                           (tab:2x2): backbone x MoE, 2x2
     tables/panderm_seed_robustness.csv  - PanDerm re-estimated at a second
                                            seed (122), confirming the ranking
                                            isn't a favorable-seed artifact
-    tables/main_ablation_ladder.csv     - secondary/modest result: generalist
-                                           vs. symmetric MoE vs. AME-Derm
-                                           (see caveat below)
-    tables/main_ablation_ladder_per_fold.csv - the same result, per fold, so
-                                           the "4 of 5 folds" claim is
-                                           checkable instead of asserted
+    tables/main_ablation_ladder.csv     - README Table R3, secondary/modest
+                                           result: generalist vs. symmetric
+                                           MoE vs. AME-Derm (see caveat below)
+    tables/main_ablation_ladder_per_fold.csv - README Table R4, the same
+                                           result per fold, so the "4 of 5
+                                           folds" claim is checkable
     tables/external_validation_bcn.csv  - per-seed macro-F1 on the BCN20000
                                            external test set
     tables/split_audit_summary.csv      - per-field split-representativeness
@@ -97,6 +99,36 @@ def panderm_comparison():
     delta = dinov2_gen - panderm_gen
     print(f"  -> mean delta +{delta.mean():.2f} pts, {int((delta > 0).sum())}/5 folds positive"
           f" (paper: +4.7 pts, 5/5 folds, sign test p=0.031)")
+
+
+def backbone_moe_2x2():
+    """README Table R2 -> paper Table 10 (tab:2x2): backbone x MoE, 2x2.
+    DINOv2 single-generalist and PanDerm (both cells) are raw; the AME-Derm
+    cell is reconstructed (see main_ablation_ladder() below and the README)."""
+    with open(os.path.join(DATA_DIR, "moe_champion_5fold_results.json")) as f:
+        moe_folds = json.load(f)
+    dinov2_gen = np.array([r["gen_only_f1"] for r in moe_folds]) * 100
+    symmetric_moe = np.array([r["champ_static_f1"] for r in moe_folds]) * 100
+    ame_derm = symmetric_moe + PAPER_DELTAS_PTS
+
+    panderm_gen = []
+    panderm_moe = []
+    for i in range(5):
+        df = pd.read_csv(os.path.join(
+            DATA_DIR, "panderm_baseline", f"generalist_fold{i}_seed42_test.csv"))
+        panderm_gen.append(f1_score(df["true_label"], df["predicted_label"], average="macro") * 100)
+        with open(os.path.join(DATA_DIR, "panderm_baseline", f"moe_fold{i}_seed42.json")) as f:
+            panderm_moe.append(json.load(f)["moe_macro_f1"] * 100)
+
+    rows = [
+        ("DINOv2", f"{dinov2_gen.mean():.2f}", f"{ame_derm.mean():.2f} (AME-Derm; reconstructed)"),
+        ("PanDerm", f"{np.mean(panderm_gen):.2f}", f"{np.mean(panderm_moe):.2f}"),
+    ]
+    write_csv(
+        os.path.join(TABLES_DIR, "backbone_moe_2x2.csv"),
+        ["backbone", "single_generalist_macro_f1_pct", "moe_macro_f1_pct"],
+        rows,
+    )
 
 
 def panderm_seed_robustness():
@@ -198,6 +230,7 @@ def split_audit_summary():
 
 if __name__ == "__main__":
     panderm_comparison()
+    backbone_moe_2x2()
     panderm_seed_robustness()
     main_ablation_ladder()
     external_validation_bcn()
