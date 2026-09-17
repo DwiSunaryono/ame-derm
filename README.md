@@ -1,120 +1,210 @@
+<div align="center">
+
 # AME-Derm
 
-**AME-Derm: An Asymmetric Anatomical Mixture-of-Experts with a Data-Driven
-Rare-Class Verification Algorithm for Dermoscopic Skin-Lesion Classification**
-— Dwi Sunaryono, Brama Seta Putra Satria, Misbakhul Munir Irfan Subakti,
-Laras Suciningtyas, Shoffi Izza Sabilla. Institut Teknologi Sepuluh Nopember,
-Surabaya, Indonesia. Submitted to *Biomedical Signal Processing and Control*.
+**An Asymmetric Anatomical Mixture-of-Experts with a Data-Driven Rare-Class
+Verification Algorithm for Dermoscopic Skin-Lesion Classification**
 
-This repository is the code-availability companion to the manuscript: lesion
-segmentation, an asymmetric anatomical mixture-of-experts classifier with
-static fusion and test-time augmentation, a rare-class verification cascade,
-external validation on BCN20000/ISIC2019, and a matched-protocol comparison
-against the PanDerm foundation model.
+![Python](https://img.shields.io/badge/python-3.10%2B-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Status](https://img.shields.io/badge/status-research%20code-orange)
+![Reproducible](https://img.shields.io/badge/reproducible-ladder%20%2B%20external%20%2B%20significance-green)
+![Datasets](https://img.shields.io/badge/datasets-HAM10000%2C%20BCN20000%2C%20ISIC%2C%20PH2-blueviolet)
 
-It is extracted and reorganized from a larger iterative-experiment
-repository, kept close to its original form so behavior matches what was run
-for the paper — not repackaged as a general-purpose library.
+</div>
 
-## Included
+---
 
-- `ame_derm/segmentation/` — the Phase-1 lesion segmentation ensemble and its
-  ablations.
-- `ame_derm/data_splits/` — the lesion-grouped, metadata-stratified 5-fold
-  splitter and its leakage audit.
-- `ame_derm/experts/` — generalist and per-anatomical-zone expert classifier
-  training.
-- `ame_derm/moe_fusion/` — static-fusion MoE evaluation and the
-  static-vs-learnable-gater ablation.
-- `ame_derm/vlm_cascade/` — the rare-class verification cascade (montage
-  construction + verdict application; see "Not Included" below).
-- `ame_derm/external_validation/` — BCN20000/ISIC2019 external validation,
-  zero/few-shot baselines, and preprocessing-lever ablations.
-- `ame_derm/panderm_comparison/` — matched-protocol comparison against
-  PanDerm.
-- `config.py` — central dataset-path configuration (override via `.env`).
+AME-Derm segments each dermoscopic image, then classifies it with an
+**asymmetric anatomical mixture-of-experts**: a large DINOv2 generalist plus
+three anatomical-zone experts (torso/limb/head), fused by a **static** scalar
+weight and six-view test-time augmentation. A data-driven **rare-class
+verification cascade** recovers precision on classes too scarce to fix by
+retraining. The method is validated internally on HAM10000 (lesion-grouped
+5-fold CV) and externally on the independent BCN20000 cohort, and compared
+against the PanDerm dermatology foundation model under a matched training
+protocol.
 
-See [docs/SYSTEM_DOCUMENTATION.md](docs/SYSTEM_DOCUMENTATION.md) for how
-these map onto the paper's sections and results.
+This repository contains the implementation, the raw per-fold/per-sample
+results backing the paper's headline numbers, and a script that regenerates
+the corresponding tables deterministically — no training, no GPU, no API
+calls required to check them.
 
-## Not Included
+## Contents
 
-- **Datasets.** HAM10000, BCN20000, ISIC2016/2017/2018/2019, PH2, MSKCC, and
-  HIBA are all public but not redistributed here — see
-  [docs/DATA_PREPARATION.md](docs/DATA_PREPARATION.md).
-- **Trained checkpoints.**
-- **A model API for the VLM cascade.** The cascade scripts prepare candidate
-  montages; verdicts are supplied by a human or an interactive chat-based VLM
-  session, exactly as described as a current limitation in the paper. There
-  is no automated "run the cascade end-to-end" entry point.
-- **The PanDerm repository itself** — clone
-  [PanDerm](https://github.com/SiyuanYan1/PanDerm) separately if you want to
-  reproduce `ame_derm/panderm_comparison/`.
-- Research-only exploratory scripts (~180 additional scripts from the
-  original experiment repository) not needed to reproduce the results
-  reported in the paper.
+| Path | Description |
+|---|---|
+| [`ame_derm/`](ame_derm) | The AME-Derm method: segmentation, anatomical experts, static-fusion MoE, and the VLM rare-class verification cascade |
+| [`baselines/`](baselines) | The PanDerm foundation-model comparison, under a training protocol matched to AME-Derm |
+| [`evaluation/`](evaluation) | Statistical significance testing (paired t-test, Wilcoxon signed-rank) for the main ablation ladder |
+| [`pipeline/`](pipeline) | Numbered end-to-end scripts: crops → splits → verify → train → evaluate → external → baseline |
+| [`results/`](results) | Raw per-fold/per-sample outputs and a `reproduce_tables.py` that regenerates CSV tables from them |
+| [`docs/`](docs) | System documentation (paper-to-code mapping) and the data preparation guide |
+| `config.py` | Dataset-path configuration, overridable via `.env` |
 
-## Installation
+**Not included:** the source datasets, trained checkpoints, the PanDerm
+repository itself, and an automated VLM API for the verification cascade
+(it is human-in-the-loop by design — see [`ame_derm/vlm_cascade/`](ame_derm/vlm_cascade)).
 
-Python 3.10+.
+## Quick start
+
+**1. Install dependencies**
 
 ```bash
-python -m venv venv
-source venv/bin/activate
+python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Optionally copy `.env.example` to `.env` and point the paths at your own
+**2. Configure paths** — copy `.env.example` to `.env` and point it at your
 dataset/checkpoint layout (defaults match what produced the paper's numbers):
 
 ```bash
 cp .env.example .env
 ```
 
-GPU with CUDA is strongly recommended for training.
+**3. Add your datasets** — see [`docs/DATA_PREPARATION.md`](docs/DATA_PREPARATION.md)
+for the exact directory layout expected under `BIRNet_Research/dataset/`.
 
-## Running the pipeline
-
-All modules live inside the `ame_derm` package and import each other by
-absolute path, so run them with `-m` from the repository root:
+**4. Run the pipeline**
 
 ```bash
-# 1. Segmentation crops
-python -m ame_derm.segmentation.generate_phase1_crops
-
-# 2. Lesion-grouped, metadata-stratified split
-python -m ame_derm.data_splits.export_representative_folds
-python -m ame_derm.data_splits.audit_split_representativeness
-
-# 3. Train generalist + anatomical experts
-python -m ame_derm.experts.train_specialist_expert --help
-
-# 4. Static-fusion MoE evaluation / main ablation ladder
-python -m ame_derm.moe_fusion.eval_moe_champion_5fold --help
-python -m ame_derm.moe_fusion.eval_adaptive_gater --help
-
-# 5. External validation on BCN20000
-python -m ame_derm.external_validation.retrain_bcn --help
-
-# 6. PanDerm matched-protocol comparison (requires the PanDerm repo)
-python -m ame_derm.panderm_comparison.dinov2_official_protocol --help
+python pipeline/01_build_segmentation_crops.py
+python pipeline/02_build_splits.py
+python pipeline/03_verify_split_integrity.py
+python pipeline/04_train_experts.py --help          # run once per zone/fold
+python pipeline/05_run_moe_evaluation.py
+python pipeline/06_external_validation.py
+python pipeline/07_baseline_panderm_comparison.py   # requires the PanDerm repo
 ```
 
-Every script accepts `--help` for its full argument list. Full stage-by-stage
-detail, including which scripts back which paper table/figure, is in
-[docs/SYSTEM_DOCUMENTATION.md](docs/SYSTEM_DOCUMENTATION.md).
+Every script forwards to its underlying `ame_derm`/`baselines` module and
+accepts `--help` for its full argument list. Full stage-by-stage detail,
+including which scripts back which paper table/figure, is in
+[`docs/SYSTEM_DOCUMENTATION.md`](docs/SYSTEM_DOCUMENTATION.md).
 
-## Documentation
+> **Just want to check the reported numbers?** Skip straight to
+> [Reproducible results](#reproducible-results) below — it regenerates from
+> data already in this repository, no dataset download required.
 
-- [System Documentation](docs/SYSTEM_DOCUMENTATION.md) — pipeline stages,
-  paper-to-code mapping, reproducibility notes.
-- [Data Preparation Guide](docs/DATA_PREPARATION.md) — dataset sources and
-  expected directory layout.
+## Datasets
+
+| Dataset | Role | Images | Source |
+|---|---|---|---|
+| **HAM10000** | Primary classification benchmark, lesion-grouped 5-fold CV | 10,015 | [ISIC Archive collection 212](https://api.isic-archive.com/collections/212/) |
+| **BCN20000** | Independent external classification cohort | 11,982 | [ISIC Archive collection 249](https://api.isic-archive.com/collections/249/) |
+| **ISIC 2018 Task 1** | Segmentation: pooled training + evaluation | 2,594 / 100 / 1,000 | [ISIC 2018 challenge](https://challenge.isic-archive.com/data/#2018) |
+| **ISIC 2017** | Segmentation: pooled training only | 2,000 | [ISIC 2017 challenge](https://challenge.isic-archive.com/data/#2017) |
+| **ISIC 2016** | Segmentation: pooled training only | 900 | [ISIC 2016 challenge](https://challenge.isic-archive.com/data/#2016) |
+| **PH2** | Segmentation: pooled training only | 200 | [PH2 Dataset](https://www.fc.up.pt/addi/ph2%20database.html) |
+| **ISIC 2019** (rare classes only) | Tested external rare-class supply lever — **negative result**: costs 2.7 pts on the internal model and −1.1 to −1.8 pts on BCN20000 (Table `tab:ledger`) | subset | [ISIC 2019 challenge](https://challenge.isic-archive.com/data/#2019) |
+
+Full directory layout in [`docs/DATA_PREPARATION.md`](docs/DATA_PREPARATION.md).
+
+## Reproducible results
+
+The tables below are regenerated deterministically from the raw outputs in
+[`results/data/`](results/data) by
+[`results/scripts/reproduce_tables.py`](results/scripts/reproduce_tables.py)
+— no training, no GPU. Full CSVs are in [`results/tables/`](results/tables).
+
+```bash
+cd results
+python scripts/reproduce_tables.py
+```
+
+### Main ablation ladder (macro-F1, %, mean ± std over 5 lesion-grouped folds)
+
+| Method | Macro-F1 |
+|---|---|
+| Single DINOv2 generalist | 80.00 ± 1.69 |
+| Symmetric MoE (base experts + base generalist) | 80.97 ± 1.58 |
+| **AME-Derm** (asymmetric)* | **81.82 ± 1.82** |
+
+*\* Raw per-fold output for the asymmetric AME-Derm row was not recovered
+from archived logs; this row is `champ_static_f1` (raw, from
+[`results/data/moe_champion_5fold_results.json`](results/data/moe_champion_5fold_results.json))
+plus the per-fold delta reported in the manuscript. See
+[`results/README.md`](results/README.md) for exactly what is raw vs.
+manuscript-sourced here.*
+
+### Statistical significance (AME-Derm vs. symmetric MoE)
+
+```bash
+python evaluation/statistical_significance.py
+```
+
+Reproduces the manuscript's reported **paired t-test: t(4)=2.30, p=0.041**
+and **Wilcoxon signed-rank: p≈0.062** (manuscript: 0.063) directly from the
+five per-fold differences {+1.33, +0.71, +0.73, +1.81, −0.37} points — 4 of 5
+folds favor AME-Derm; the effect is small and the paper describes it as
+"modest," resting the asymmetry claim on mechanism and fold-wise consistency
+as much as on significance.
+
+### External validation on BCN20000 (macro-F1, %, computed from raw per-sample predictions)
+
+| Run | n (test) | Macro-F1 |
+|---|---|---|
+| best checkpoint | 2,397 | 56.10 |
+| generalist-only | 2,397 | 50.98 |
+| seed 7 | 2,396 | 57.70 |
+| seed 123 | 2,397 | 57.47 |
+| seed 314 | 2,397 | 54.70 |
+| seed 555 | 2,397 | 61.34 |
+| seed 777 | 2,397 | 58.47 |
+| seed 888 | 2,397 | 55.63 |
+| seed 999 | 2,397 | 63.97 |
+
+The manuscript reports a fold-level range of 54.70–58.47 on the specific
+three-fold cascade table (`tab:vlm-cascade`); the wider spread above is the
+full nine-run multi-seed sweep in [`results/data/bcn_external/`](results/data/bcn_external),
+computed fresh with `sklearn.metrics.f1_score(labs, preds, average="macro")`.
+
+### Split-representativeness audit
+
+The lesion-grouped 5-fold split has **zero lesion leakage** (fixed from an
+earlier, non-grouped split that leaked 34.8%/36.1% of test/val images — see
+[`docs/SYSTEM_DOCUMENTATION.md`](docs/SYSTEM_DOCUMENTATION.md)) and stays
+within a mean absolute deviation of ≤0.7pp and max ≤3.1pp from the global
+class/dataset/sex/localization/age distribution across folds; full breakdown
+in [`results/tables/split_audit_summary.csv`](results/tables/split_audit_summary.csv).
+
+## Configuration
+
+Dataset paths (`CROP_DIR`, `BCN_CSV`, `BCN_IMG`, `AME_DERM_ROOT`) are
+centralized in [`config.py`](config.py) and overridable via `.env`
+(see `.env.example`). Everything else (backbone choice, seeds, TTA views,
+epochs, etc.) is a per-script CLI argument — run any script with `--help`.
+
+## Contributors
+
+- **Dwi Sunaryono** — Department of Informatics, Institut Teknologi Sepuluh Nopember, Surabaya 60111, Indonesia (corresponding author, dwi@its.ac.id)
+- **Brama Seta Putra Satria** — Department of Informatics, Institut Teknologi Sepuluh Nopember, Surabaya 60111, Indonesia
+- **Misbakhul Munir Irfan Subakti** — Department of Informatics, Institut Teknologi Sepuluh Nopember, Surabaya 60111, Indonesia
+- **Laras Suciningtyas** — Department of Electrical Engineering, Institut Teknologi Sepuluh Nopember, Surabaya 60111, Indonesia
+- **Shoffi Izza Sabilla** — Department of Medical Technology, Institut Teknologi Sepuluh Nopember, Surabaya 60111, Indonesia
+
+## Citation
+
+```bibtex
+@article{sunaryono2026amederm,
+  title   = {AME-Derm: An Asymmetric Anatomical Mixture-of-Experts with a
+             Data-Driven Rare-Class Verification Algorithm for Dermoscopic
+             Skin-Lesion Classification},
+  author  = {Sunaryono, Dwi and Satria, Brama Seta Putra and Subakti,
+             Misbakhul Munir Irfan and Suciningtyas, Laras and Sabilla,
+             Shoffi Izza},
+  journal = {Biomedical Signal Processing and Control},
+  year    = {2026},
+  note    = {Submitted / under review}
+}
+```
+
+> **Note.** This is a manuscript submitted to *Biomedical Signal Processing
+> and Control* (Elsevier); **no DOI is assigned yet**. This citation is
+> provided for attribution only — final bibliographic details (volume,
+> pages, DOI) will follow acceptance. Corresponding author: **Dwi Sunaryono
+> (dwi@its.ac.id)**.
 
 ## License
 
 MIT — see [LICENSE](LICENSE).
-
-## Citation
-
-Citation details will be added once the manuscript is accepted.

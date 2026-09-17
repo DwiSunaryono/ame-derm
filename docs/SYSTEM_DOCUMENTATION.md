@@ -2,7 +2,10 @@
 
 This document walks through the pipeline in the order it runs, mapping each
 stage to the paper section that describes it and the package that implements
-it. For dataset layout, see [DATA_PREPARATION.md](DATA_PREPARATION.md).
+it. For dataset layout, see [DATA_PREPARATION.md](DATA_PREPARATION.md). For a
+numbered, runnable version of this same order, see
+[`pipeline/`](../pipeline) at the repository root; for the raw outputs and
+regenerable tables referenced throughout, see [`results/`](../results).
 
 ## 1. Segmentation (`ame_derm/segmentation/`)
 
@@ -135,7 +138,7 @@ Paper §"External Validation on an Independent Cohort".
   `pool_external_rare.py` — pool additional rare-class examples from
   ISIC2019/MSKCC/HIBA into the BCN retraining set.
 
-## 7. PanDerm comparison (`ame_derm/panderm_comparison/`)
+## 7. PanDerm comparison (`baselines/panderm_comparison/`)
 
 Paper §"Comparison with a Dermatology Foundation Model Under a Matched
 Protocol". Requires the separate [PanDerm](https://github.com/SiyuanYan1/PanDerm)
@@ -153,6 +156,15 @@ shared fold CSVs and checkpoints.
   the 2x2 backbone x architecture comparison table.
 - `moe_official_eval.py` — the parallel official-protocol MoE evaluation for
   the DINOv2 backbone.
+
+## 8. Statistical significance (`evaluation/statistical_significance.py`)
+
+Paper §"Statistical Significance". Reproduces the one-sided paired test of
+whether AME-Derm improves on the symmetric MoE across the same five folds:
+a paired t-test and a Wilcoxon signed-rank test on the per-fold macro-F1
+differences. Run with `python evaluation/statistical_significance.py`; see
+[`results/README.md`](../results/README.md) for exactly which numbers are
+raw vs. taken from the manuscript.
 
 ## Reproducibility notes
 

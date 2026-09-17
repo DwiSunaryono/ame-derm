@@ -1,0 +1,11 @@
+split,field,mean_abs_diff_avg_over_folds,max_abs_diff_over_folds,coverage_avg_over_folds
+test,label,0.0003,0.0008,1.0000
+test,dataset,0.0004,0.0011,1.0000
+test,sex,0.0049,0.0153,1.0000
+test,localization,0.0038,0.0203,0.9733
+test,age_bucket,0.0061,0.0197,1.0000
+val,label,0.0006,0.0023,1.0000
+val,dataset,0.0006,0.0019,1.0000
+val,sex,0.0058,0.0122,1.0000
+val,localization,0.0059,0.0306,0.9466
+val,age_bucket,0.0073,0.0287,1.0000

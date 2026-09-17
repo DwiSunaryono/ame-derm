@@ -98,6 +98,7 @@ paths imports them from `config.py`.
 
 ```bash
 python -m ame_derm.segmentation.generate_phase1_crops
+# equivalently: python pipeline/01_build_segmentation_crops.py
 ```
 
 This runs the locked segmentation ensemble
@@ -107,8 +108,8 @@ to `CROP_DIR`, which every classifier/expert/MoE script downstream expects.
 ## Building the lesion-grouped split
 
 ```bash
-python -m ame_derm.data_splits.export_representative_folds
-python -m ame_derm.data_splits.audit_split_representativeness
+python -m ame_derm.data_splits.export_representative_folds       # pipeline/02_build_splits.py
+python -m ame_derm.data_splits.audit_split_representativeness    # pipeline/03_verify_split_integrity.py
 ```
 
 The first exports the 5-fold, lesion-grouped, metadata-stratified split used

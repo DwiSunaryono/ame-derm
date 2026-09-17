@@ -12,7 +12,8 @@ venv/
 *.log
 *.csv
 *.json
-!requirements*.json
+!results/data/**/*.json
+!results/tables/**/*.csv
 outputs/
 checkpoints/
 BIRNet_Research/

@@ -1,0 +1,4 @@
+method,macro_f1_mean_pct,macro_f1_std_pct
+Single DINOv2 generalist,80.00,1.69
+Symmetric MoE (base experts + base generalist),80.97,1.58
+"AME-Derm (asymmetric; reconstructed, see script docstring)",81.82,1.82

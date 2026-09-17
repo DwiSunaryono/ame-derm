@@ -1,0 +1,423 @@
+{
+  "seed": 42,
+  "stratify_fields": [
+    "dataset"
+  ],
+  "n_total": 10015,
+  "fields": [
+    "label",
+    "dataset",
+    "sex",
+    "localization",
+    "age_bucket"
+  ],
+  "folds": {
+    "0": {
+      "test": {
+        "label": {
+          "mean_abs_diff": 0.0003,
+          "max_abs_diff": 0.0008,
+          "coverage": 1.0,
+          "n_categories": 7,
+          "n_in_fold": 2004
+        },
+        "dataset": {
+          "mean_abs_diff": 0.0003,
+          "max_abs_diff": 0.0005,
+          "coverage": 1.0,
+          "n_categories": 4,
+          "n_in_fold": 2004
+        },
+        "sex": {
+          "mean_abs_diff": 0.0023,
+          "max_abs_diff": 0.0034,
+          "coverage": 1.0,
+          "n_categories": 3,
+          "n_in_fold": 2004
+        },
+        "localization": {
+          "mean_abs_diff": 0.0037,
+          "max_abs_diff": 0.0143,
+          "coverage": 0.9333,
+          "n_categories": 15,
+          "n_in_fold": 2004
+        },
+        "age_bucket": {
+          "mean_abs_diff": 0.003,
+          "max_abs_diff": 0.0091,
+          "coverage": 1.0,
+          "n_categories": 10,
+          "n_in_fold": 2004
+        }
+      },
+      "val": {
+        "label": {
+          "mean_abs_diff": 0.0006,
+          "max_abs_diff": 0.0011,
+          "coverage": 1.0,
+          "n_categories": 7,
+          "n_in_fold": 1335
+        },
+        "dataset": {
+          "mean_abs_diff": 0.0006,
+          "max_abs_diff": 0.0011,
+          "coverage": 1.0,
+          "n_categories": 4,
+          "n_in_fold": 1335
+        },
+        "sex": {
+          "mean_abs_diff": 0.0032,
+          "max_abs_diff": 0.0048,
+          "coverage": 1.0,
+          "n_categories": 3,
+          "n_in_fold": 1335
+        },
+        "localization": {
+          "mean_abs_diff": 0.0072,
+          "max_abs_diff": 0.0306,
+          "coverage": 0.9333,
+          "n_categories": 15,
+          "n_in_fold": 1335
+        },
+        "age_bucket": {
+          "mean_abs_diff": 0.0096,
+          "max_abs_diff": 0.0176,
+          "coverage": 1.0,
+          "n_categories": 10,
+          "n_in_fold": 1335
+        }
+      }
+    },
+    "1": {
+      "test": {
+        "label": {
+          "mean_abs_diff": 0.0001,
+          "max_abs_diff": 0.0003,
+          "coverage": 1.0,
+          "n_categories": 7,
+          "n_in_fold": 2003
+        },
+        "dataset": {
+          "mean_abs_diff": 0.0004,
+          "max_abs_diff": 0.0009,
+          "coverage": 1.0,
+          "n_categories": 4,
+          "n_in_fold": 2003
+        },
+        "sex": {
+          "mean_abs_diff": 0.0045,
+          "max_abs_diff": 0.0067,
+          "coverage": 1.0,
+          "n_categories": 3,
+          "n_in_fold": 2003
+        },
+        "localization": {
+          "mean_abs_diff": 0.0036,
+          "max_abs_diff": 0.0203,
+          "coverage": 0.9333,
+          "n_categories": 15,
+          "n_in_fold": 2003
+        },
+        "age_bucket": {
+          "mean_abs_diff": 0.0068,
+          "max_abs_diff": 0.0142,
+          "coverage": 1.0,
+          "n_categories": 10,
+          "n_in_fold": 2003
+        }
+      },
+      "val": {
+        "label": {
+          "mean_abs_diff": 0.001,
+          "max_abs_diff": 0.0023,
+          "coverage": 1.0,
+          "n_categories": 7,
+          "n_in_fold": 1336
+        },
+        "dataset": {
+          "mean_abs_diff": 0.0012,
+          "max_abs_diff": 0.0019,
+          "coverage": 1.0,
+          "n_categories": 4,
+          "n_in_fold": 1336
+        },
+        "sex": {
+          "mean_abs_diff": 0.0039,
+          "max_abs_diff": 0.0059,
+          "coverage": 1.0,
+          "n_categories": 3,
+          "n_in_fold": 1336
+        },
+        "localization": {
+          "mean_abs_diff": 0.0071,
+          "max_abs_diff": 0.0249,
+          "coverage": 1.0,
+          "n_categories": 15,
+          "n_in_fold": 1336
+        },
+        "age_bucket": {
+          "mean_abs_diff": 0.0089,
+          "max_abs_diff": 0.0287,
+          "coverage": 1.0,
+          "n_categories": 10,
+          "n_in_fold": 1336
+        }
+      }
+    },
+    "2": {
+      "test": {
+        "label": {
+          "mean_abs_diff": 0.0003,
+          "max_abs_diff": 0.0005,
+          "coverage": 1.0,
+          "n_categories": 7,
+          "n_in_fold": 2003
+        },
+        "dataset": {
+          "mean_abs_diff": 0.0005,
+          "max_abs_diff": 0.0011,
+          "coverage": 1.0,
+          "n_categories": 4,
+          "n_in_fold": 2003
+        },
+        "sex": {
+          "mean_abs_diff": 0.0018,
+          "max_abs_diff": 0.0027,
+          "coverage": 1.0,
+          "n_categories": 3,
+          "n_in_fold": 2003
+        },
+        "localization": {
+          "mean_abs_diff": 0.0037,
+          "max_abs_diff": 0.0182,
+          "coverage": 1.0,
+          "n_categories": 15,
+          "n_in_fold": 2003
+        },
+        "age_bucket": {
+          "mean_abs_diff": 0.0101,
+          "max_abs_diff": 0.0197,
+          "coverage": 1.0,
+          "n_categories": 10,
+          "n_in_fold": 2003
+        }
+      },
+      "val": {
+        "label": {
+          "mean_abs_diff": 0.0002,
+          "max_abs_diff": 0.0005,
+          "coverage": 1.0,
+          "n_categories": 7,
+          "n_in_fold": 1337
+        },
+        "dataset": {
+          "mean_abs_diff": 0.0002,
+          "max_abs_diff": 0.0004,
+          "coverage": 1.0,
+          "n_categories": 4,
+          "n_in_fold": 1337
+        },
+        "sex": {
+          "mean_abs_diff": 0.0081,
+          "max_abs_diff": 0.0122,
+          "coverage": 1.0,
+          "n_categories": 3,
+          "n_in_fold": 1337
+        },
+        "localization": {
+          "mean_abs_diff": 0.0069,
+          "max_abs_diff": 0.0271,
+          "coverage": 0.9333,
+          "n_categories": 15,
+          "n_in_fold": 1337
+        },
+        "age_bucket": {
+          "mean_abs_diff": 0.008,
+          "max_abs_diff": 0.0172,
+          "coverage": 1.0,
+          "n_categories": 10,
+          "n_in_fold": 1337
+        }
+      }
+    },
+    "3": {
+      "test": {
+        "label": {
+          "mean_abs_diff": 0.0004,
+          "max_abs_diff": 0.0008,
+          "coverage": 1.0,
+          "n_categories": 7,
+          "n_in_fold": 2002
+        },
+        "dataset": {
+          "mean_abs_diff": 0.0003,
+          "max_abs_diff": 0.0004,
+          "coverage": 1.0,
+          "n_categories": 4,
+          "n_in_fold": 2002
+        },
+        "sex": {
+          "mean_abs_diff": 0.0102,
+          "max_abs_diff": 0.0153,
+          "coverage": 1.0,
+          "n_categories": 3,
+          "n_in_fold": 2002
+        },
+        "localization": {
+          "mean_abs_diff": 0.0053,
+          "max_abs_diff": 0.0199,
+          "coverage": 1.0,
+          "n_categories": 15,
+          "n_in_fold": 2002
+        },
+        "age_bucket": {
+          "mean_abs_diff": 0.0065,
+          "max_abs_diff": 0.0109,
+          "coverage": 1.0,
+          "n_categories": 10,
+          "n_in_fold": 2002
+        }
+      },
+      "val": {
+        "label": {
+          "mean_abs_diff": 0.0006,
+          "max_abs_diff": 0.0012,
+          "coverage": 1.0,
+          "n_categories": 7,
+          "n_in_fold": 1336
+        },
+        "dataset": {
+          "mean_abs_diff": 0.0004,
+          "max_abs_diff": 0.0005,
+          "coverage": 1.0,
+          "n_categories": 4,
+          "n_in_fold": 1336
+        },
+        "sex": {
+          "mean_abs_diff": 0.0074,
+          "max_abs_diff": 0.0111,
+          "coverage": 1.0,
+          "n_categories": 3,
+          "n_in_fold": 1336
+        },
+        "localization": {
+          "mean_abs_diff": 0.0033,
+          "max_abs_diff": 0.0098,
+          "coverage": 0.9333,
+          "n_categories": 15,
+          "n_in_fold": 1336
+        },
+        "age_bucket": {
+          "mean_abs_diff": 0.0058,
+          "max_abs_diff": 0.0166,
+          "coverage": 1.0,
+          "n_categories": 10,
+          "n_in_fold": 1336
+        }
+      }
+    },
+    "4": {
+      "test": {
+        "label": {
+          "mean_abs_diff": 0.0002,
+          "max_abs_diff": 0.0005,
+          "coverage": 1.0,
+          "n_categories": 7,
+          "n_in_fold": 2003
+        },
+        "dataset": {
+          "mean_abs_diff": 0.0003,
+          "max_abs_diff": 0.0006,
+          "coverage": 1.0,
+          "n_categories": 4,
+          "n_in_fold": 2003
+        },
+        "sex": {
+          "mean_abs_diff": 0.0056,
+          "max_abs_diff": 0.0084,
+          "coverage": 1.0,
+          "n_categories": 3,
+          "n_in_fold": 2003
+        },
+        "localization": {
+          "mean_abs_diff": 0.0029,
+          "max_abs_diff": 0.0133,
+          "coverage": 1.0,
+          "n_categories": 15,
+          "n_in_fold": 2003
+        },
+        "age_bucket": {
+          "mean_abs_diff": 0.0042,
+          "max_abs_diff": 0.0141,
+          "coverage": 1.0,
+          "n_categories": 10,
+          "n_in_fold": 2003
+        }
+      },
+      "val": {
+        "label": {
+          "mean_abs_diff": 0.0005,
+          "max_abs_diff": 0.0012,
+          "coverage": 1.0,
+          "n_categories": 7,
+          "n_in_fold": 1336
+        },
+        "dataset": {
+          "mean_abs_diff": 0.0008,
+          "max_abs_diff": 0.0012,
+          "coverage": 1.0,
+          "n_categories": 4,
+          "n_in_fold": 1336
+        },
+        "sex": {
+          "mean_abs_diff": 0.0064,
+          "max_abs_diff": 0.0096,
+          "coverage": 1.0,
+          "n_categories": 3,
+          "n_in_fold": 1336
+        },
+        "localization": {
+          "mean_abs_diff": 0.005,
+          "max_abs_diff": 0.0153,
+          "coverage": 0.9333,
+          "n_categories": 15,
+          "n_in_fold": 1336
+        },
+        "age_bucket": {
+          "mean_abs_diff": 0.0044,
+          "max_abs_diff": 0.0167,
+          "coverage": 1.0,
+          "n_categories": 10,
+          "n_in_fold": 1336
+        }
+      }
+    }
+  },
+  "summary": {
+    "label": {
+      "mean_abs_diff": 0.0003,
+      "max_abs_diff": 0.0008,
+      "coverage": 1.0
+    },
+    "dataset": {
+      "mean_abs_diff": 0.0004,
+      "max_abs_diff": 0.0011,
+      "coverage": 1.0
+    },
+    "sex": {
+      "mean_abs_diff": 0.0049,
+      "max_abs_diff": 0.0153,
+      "coverage": 1.0
+    },
+    "localization": {
+      "mean_abs_diff": 0.0038,
+      "max_abs_diff": 0.0203,
+      "coverage": 0.9733
+    },
+    "age_bucket": {
+      "mean_abs_diff": 0.0061,
+      "max_abs_diff": 0.0197,
+      "coverage": 1.0
+    }
+  }
+}
