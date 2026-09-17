@@ -94,6 +94,18 @@ def panderm_comparison():
     print(f"    {'DINOv2':10s} {dinov2_gen.mean():18.2f} {ame_derm.mean():10.2f}  (AME-Derm; MoE column is reconstructed)")
     print(f"    {'PanDerm':10s} {panderm_gen.mean():18.2f} {panderm_moe.mean():10.2f}  (both raw)")
 
+    print()
+    print("  Seed robustness (PanDerm re-estimated at a second seed, both raw):")
+    for seed in (42, 122):
+        vals = []
+        for i in range(5):
+            df = pd.read_csv(os.path.join(
+                DATA_DIR, "panderm_baseline", f"generalist_fold{i}_seed{seed}_test.csv"))
+            vals.append(f1_score(df["true_label"], df["predicted_label"], average="macro") * 100)
+        vals = np.array(vals)
+        print(f"    seed {seed}: {vals.mean():.2f} +/- {vals.std(ddof=1):.2f}")
+    print("    (paper reports seed 122 -> 76.60 +/- 2.6, still below DINOv2's 78.27)")
+
 
 def internal_ablation():
     print()

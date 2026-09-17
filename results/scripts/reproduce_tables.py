@@ -12,6 +12,9 @@ Produces:
     tables/panderm_comparison.csv       - HEADLINE result: DINOv2 (AME-Derm's
                                            backbone) vs. PanDerm, per fold,
                                            fully raw on both sides
+    tables/panderm_seed_robustness.csv  - PanDerm re-estimated at a second
+                                           seed (122), confirming the ranking
+                                           isn't a favorable-seed artifact
     tables/main_ablation_ladder.csv     - secondary/modest result: generalist
                                            vs. symmetric MoE vs. AME-Derm
                                            (see caveat below)
@@ -93,6 +96,27 @@ def panderm_comparison():
           f" (paper: +4.7 pts, 5/5 folds, sign test p=0.031)")
 
 
+def panderm_seed_robustness():
+    """Paper §"Comparison with a Dermatology Foundation Model": "re-estimated
+    at a second seed (122), the same PanDerm reaches 76.60 +/- 2.6" — checks
+    the PanDerm ranking isn't an artifact of a favorable seed. Computed fresh
+    from raw per-sample predictions at both seeds."""
+    rows = []
+    for seed in (42, 122):
+        vals = []
+        for i in range(5):
+            df = pd.read_csv(os.path.join(
+                DATA_DIR, "panderm_baseline", f"generalist_fold{i}_seed{seed}_test.csv"))
+            vals.append(f1_score(df["true_label"], df["predicted_label"], average="macro") * 100)
+        vals = np.array(vals)
+        rows.append((seed, f"{vals.mean():.2f}", f"{vals.std(ddof=1):.2f}"))
+    write_csv(
+        os.path.join(TABLES_DIR, "panderm_seed_robustness.csv"),
+        ["seed", "macro_f1_mean_pct", "macro_f1_std_pct"],
+        rows,
+    )
+
+
 def main_ablation_ladder():
     with open(os.path.join(DATA_DIR, "moe_champion_5fold_results.json")) as f:
         folds = json.load(f)
@@ -159,6 +183,7 @@ def split_audit_summary():
 
 if __name__ == "__main__":
     panderm_comparison()
+    panderm_seed_robustness()
     main_ablation_ladder()
     external_validation_bcn()
     split_audit_summary()

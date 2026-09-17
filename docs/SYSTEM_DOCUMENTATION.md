@@ -81,6 +81,11 @@ Experts").
   loop.
 - `train_moe_smart_router.py` — a learnable router baseline, used as the
   comparison point against static fusion (see below).
+- `train_phase3_hybrid_multimodal.py` — a hybrid real+boundary-augmented
+  training variant of the generalist, used as a component in the class-wise
+  analysis of `moe_fusion/diagnose_classwise.py` below.
+- `train_classifier_phase2_boundary_aug_v2.py` — the boundary-augmentation
+  dataset builder consumed by `train_phase3_hybrid_multimodal.py`.
 
 ## 4. MoE fusion & the main ablation ladder (`ame_derm/moe_fusion/`)
 
@@ -97,6 +102,15 @@ Paper §"Static Fusion and Test-Time Augmentation" and the main results table.
   the asymmetric (large generalist + base experts) static MoE vs. a trained
   `AdaptiveDualGater` MLP router. This is the source of the paper's argument
   that static routing should be preferred over a learnable gater.
+- `eval_hetero_torso_fold0.py` — paper §"Backbone Homogeneity and the
+  Generalization Gap" (Table `tab:hetero`): substitutes a Swin expert for
+  the DINOv2 torso expert at fold 0 to test whether a heterogeneous backbone
+  raises ensemble diversity. It doesn't — the Swin expert scores higher on
+  validation but degrades sharply on held-out test.
+- `diagnose_classwise.py` — paper §"Class-wise Analysis on the Lowest-F1
+  Classes" (Table `tab:classwise`): per-class F1 for the symmetric MoE vs.
+  AME-Derm on melanoma (MEL) and actinic keratosis (AKIEC), the two
+  lowest-F1 classes.
 
 ## 5. Rare-class verification cascade (`ame_derm/vlm_cascade/`)
 
@@ -162,14 +176,39 @@ these scripts where to find the shared fold CSVs and checkpoints.
 - `moe_official_eval.py` — the parallel official-protocol MoE evaluation for
   the DINOv2 backbone.
 
-## 8. Statistical significance (`evaluation/statistical_significance.py`)
+## 8. ABCD placebo ablation (`ame_derm/abcd_ablation/`)
 
-Paper §"Statistical Significance". Reproduces the one-sided paired test of
-whether AME-Derm improves on the symmetric MoE across the same five folds:
-a paired t-test and a Wilcoxon signed-rank test on the per-fold macro-F1
-differences. Run with `python evaluation/statistical_significance.py`; see
-[`results/README.md`](../results/README.md) for exactly which numbers are
-raw vs. taken from the manuscript.
+Paper §"Manually Specified ABCD Features Are Redundant" (Table `tab:abcd`).
+Tests whether classical ABCD descriptors (asymmetry, border, colour,
+diameter/compactness), computed from the Phase-1 masks, add information
+beyond what the DINOv2 representation already encodes — using a
+placebo-controlled design so any apparent gain can't just be the extra
+capacity of the head that consumes the features.
+
+- `extract_abcd_features.py` — computes the 8 ABCD descriptors from the
+  Phase-1 segmentation masks and caches them to `BIRNet_Research/outputs/abcd_features.csv`.
+- `train_multimodal_ablation.py` — the architecturally-identical 23-dim
+  metadata head; the placebo variant feeds it a constant null vector instead
+  of real descriptors.
+- `train_multimodal_abcd.py` — trains each ABCD subset (geometry / colour /
+  all) through that same head, loading features from the CSV above.
+- `eval_abcd_ablation.py` — computes the placebo-controlled effect δ per
+  subset and applies the reproducible-gain criterion (must beat the placebo
+  *and* replicate at a second fold) — none of the subsets qualify.
+
+## 9. Statistical significance & inference latency (`evaluation/`)
+
+- `statistical_significance.py` — paper §"Statistical Significance". Reproduces
+  **both** headline tests: the paper's most robust result (DINOv2/AME-Derm vs.
+  PanDerm, 5/5 folds, exact sign test p=0.031, fully raw on both sides) and
+  the secondary, modest internal ablation (asymmetric vs. symmetric MoE,
+  paired t-test t(4)=2.30/p=0.041). Run with
+  `python evaluation/statistical_significance.py`; see
+  [`results/README.md`](../results/README.md) for exactly which numbers are
+  raw vs. taken from the manuscript.
+- `inference_latency.py` — paper §"Inference Latency" (Table `tab:latency`):
+  wall-clock benchmark of the segmentation ensemble and Phase-2 classification
+  (generalist + one routed expert) at fp16/fp32 on a single GPU.
 
 ## Reproducibility notes
 

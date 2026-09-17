@@ -34,9 +34,9 @@ calls required to check them.
 
 | Path | Description |
 |---|---|
-| [`ame_derm/`](ame_derm) | The AME-Derm method: segmentation, anatomical experts, static-fusion MoE, and the VLM rare-class verification cascade |
+| [`ame_derm/`](ame_derm) | The AME-Derm method: segmentation, anatomical experts, static-fusion MoE, the ABCD placebo ablation, and the VLM rare-class verification cascade |
 | [`baselines/`](baselines) | The PanDerm foundation-model comparison, under a training protocol matched to AME-Derm |
-| [`evaluation/`](evaluation) | Statistical significance testing (paired t-test, Wilcoxon signed-rank) for the main ablation ladder |
+| [`evaluation/`](evaluation) | Statistical significance testing (paired t-test, Wilcoxon signed-rank, exact sign test) and the inference-latency benchmark |
 | [`pipeline/`](pipeline) | Numbered end-to-end scripts: crops → splits → verify → train → evaluate → external → baseline |
 | [`results/`](results) | Raw per-fold/per-sample outputs and a `reproduce_tables.py` that regenerates CSV tables from them |
 | [`docs/`](docs) | System documentation (paper-to-code mapping) and the data preparation guide |
