@@ -25,6 +25,14 @@ url: "https://doi.org/10.1016/j.array.2026.101409"
 license: MIT
 version: "1.0.0"
 date-released: "2026-11-26"
+doi: "10.5281/zenodo.24563611"
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.24563611"
+    description: "Archived release v1.0.0 (version DOI)"
+  - type: doi
+    value: "10.5281/zenodo.24563610"
+    description: "Concept DOI, always resolving to the latest release"
 keywords:
   - dermoscopy
   - skin-lesion classification

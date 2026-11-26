@@ -8,6 +8,7 @@ Verification Algorithm for Dermoscopic Skin-Lesion Classification**
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 [![DOI](https://img.shields.io/badge/DOI-10.1016%2Fj.array.2026.101409-blue)](https://doi.org/10.1016/j.array.2026.101409)
+[![Software DOI](https://img.shields.io/badge/software%20DOI-10.5281%2Fzenodo.24563610-blue)](https://doi.org/10.5281/zenodo.24563610)
 ![Status](https://img.shields.io/badge/status-research%20code-orange)
 ![Reproducible](https://img.shields.io/badge/vs%20PanDerm-%2B4.7pts%2C%205%2F5%20folds%2C%20p%3D0.031-green)
 ![Datasets](https://img.shields.io/badge/datasets-HAM10000%2C%20BCN20000%2C%20ISIC%2C%20PH2-blueviolet)
@@ -269,6 +270,28 @@ script with `--help`.
 > article 101409: <https://doi.org/10.1016/j.array.2026.101409>. The
 > machine-readable form is in [`CITATION.cff`](CITATION.cff). Corresponding
 > author: **Dwi Sunaryono (dwi@its.ac.id)**.
+
+### Software archive
+
+The code in this repository is archived on Zenodo. Cite the version you used
+(`v1.0.0` below); the concept DOI `10.5281/zenodo.24563610` always resolves to
+the latest release.
+
+```bibtex
+@software{sunaryono2026amederm_code,
+  author    = {Sunaryono, Dwi and Satria, Brama Seta Putra and Subakti,
+               Misbakhul Munir Irfan and Suciningtyas, Laras and Sabilla,
+               Shoffi Izza},
+  title     = {AME-Derm: An Asymmetric Anatomical Mixture-of-Experts with a
+               Data-Driven Rare-Class Verification Algorithm for Dermoscopic
+               Skin-Lesion Classification},
+  version   = {1.0.0},
+  year      = {2026},
+  publisher = {Zenodo},
+  doi       = {10.5281/zenodo.24563611},
+  url       = {https://doi.org/10.5281/zenodo.24563611}
+}
+```
 
 ## License
 
