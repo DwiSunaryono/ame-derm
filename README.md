@@ -7,6 +7,7 @@ Verification Algorithm for Dermoscopic Skin-Lesion Classification**
 
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
+[![DOI](https://img.shields.io/badge/DOI-10.1016%2Fj.array.2026.101409-blue)](https://doi.org/10.1016/j.array.2026.101409)
 ![Status](https://img.shields.io/badge/status-research%20code-orange)
 ![Reproducible](https://img.shields.io/badge/vs%20PanDerm-%2B4.7pts%2C%205%2F5%20folds%2C%20p%3D0.031-green)
 ![Datasets](https://img.shields.io/badge/datasets-HAM10000%2C%20BCN20000%2C%20ISIC%2C%20PH2-blueviolet)
@@ -40,6 +41,7 @@ you can verify yourself — no GPU, no training, and no API calls required.
 | [`pipeline/`](pipeline) | End-to-end scripts numbered in run order: crops → splits → verify → train → evaluate → external → baseline |
 | [`results/`](results) | Unprocessed per-fold and per-sample outputs, plus a `reproduce_tables.py` that rebuilds the CSV tables from that data |
 | [`docs/`](docs) | Documentation of the system (mapping paper sections to code) and the dataset-preparation guide |
+| [`CITATION.cff`](CITATION.cff) | Machine-readable citation metadata (paper DOI and software release) |
 | `config.py` | Configuration of dataset paths, which can be overridden through `.env` |
 
 **What this repository does not ship:** the source datasets, trained
@@ -246,22 +248,26 @@ script with `--help`.
 
 ```bibtex
 @article{sunaryono2026amederm,
-  title   = {AME-Derm: An Asymmetric Anatomical Mixture-of-Experts with a
-             Data-Driven Rare-Class Verification Algorithm for Dermoscopic
-             Skin-Lesion Classification},
-  author  = {Sunaryono, Dwi and Satria, Brama Seta Putra and Subakti,
-             Misbakhul Munir Irfan and Suciningtyas, Laras and Sabilla,
-             Shoffi Izza},
-  journal = {Biomedical Signal Processing and Control},
-  year    = {2026},
-  note    = {Submitted / under review}
+  title     = {AME-Derm: An asymmetric anatomical mixture-of-experts with a
+               data-driven rare-class verification algorithm for dermoscopic
+               skin-lesion classification},
+  author    = {Sunaryono, Dwi and Satria, Brama Seta Putra and Subakti,
+               Misbakhul Munir Irfan and Suciningtyas, Laras and Sabilla,
+               Shoffi Izza},
+  journal   = {Array},
+  volume    = {32},
+  pages     = {101409},
+  year      = {2026},
+  issn      = {2590-0056},
+  doi       = {10.1016/j.array.2026.101409},
+  url       = {https://doi.org/10.1016/j.array.2026.101409},
+  publisher = {Elsevier}
 }
 ```
 
-> **Note.** This manuscript is under submission to *Biomedical Signal
-> Processing and Control* (Elsevier) and **no DOI has been assigned yet**.
-> The citation above serves attribution purposes only; final bibliographic
-> details (volume, pages, DOI) will be supplied once accepted. Corresponding
+> **Note.** The article is published in *Array* (Elsevier), volume 32 (2026),
+> article 101409: <https://doi.org/10.1016/j.array.2026.101409>. The
+> machine-readable form is in [`CITATION.cff`](CITATION.cff). Corresponding
 > author: **Dwi Sunaryono (dwi@its.ac.id)**.
 
 ## License

@@ -1,0 +1,57 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the article and the archived release as described below."
+title: "AME-Derm: An Asymmetric Anatomical Mixture-of-Experts with a Data-Driven Rare-Class Verification Algorithm for Dermoscopic Skin-Lesion Classification"
+type: software
+authors:
+  - family-names: Sunaryono
+    given-names: Dwi
+    orcid: "https://orcid.org/0000-0001-9925-9263"
+    affiliation: "Department of Informatics, Institut Teknologi Sepuluh Nopember, Surabaya 60111, Indonesia"
+    email: dwi@its.ac.id
+  - family-names: Satria
+    given-names: Brama Seta Putra
+    affiliation: "Department of Informatics, Institut Teknologi Sepuluh Nopember, Surabaya 60111, Indonesia"
+  - family-names: Subakti
+    given-names: Misbakhul Munir Irfan
+    affiliation: "Department of Informatics, Institut Teknologi Sepuluh Nopember, Surabaya 60111, Indonesia"
+  - family-names: Suciningtyas
+    given-names: Laras
+    affiliation: "Department of Electrical Engineering, Institut Teknologi Sepuluh Nopember, Surabaya 60111, Indonesia"
+  - family-names: Sabilla
+    given-names: Shoffi Izza
+    affiliation: "Department of Medical Technology, Institut Teknologi Sepuluh Nopember, Surabaya 60111, Indonesia"
+repository-code: "https://github.com/DwiSunaryono/ame-derm"
+url: "https://doi.org/10.1016/j.array.2026.101409"
+license: MIT
+version: "1.0.0"
+date-released: "2026-11-26"
+keywords:
+  - dermoscopy
+  - skin-lesion classification
+  - mixture-of-experts
+  - rare-class verification
+  - PanDerm
+preferred-citation:
+  type: article
+  title: "AME-Derm: An asymmetric anatomical mixture-of-experts with a data-driven rare-class verification algorithm for dermoscopic skin-lesion classification"
+  authors:
+    - family-names: Sunaryono
+      given-names: Dwi
+      orcid: "https://orcid.org/0000-0001-9925-9263"
+    - family-names: Satria
+      given-names: Brama Seta Putra
+    - family-names: Subakti
+      given-names: Misbakhul Munir Irfan
+    - family-names: Suciningtyas
+      given-names: Laras
+    - family-names: Sabilla
+      given-names: Shoffi Izza
+  journal: Array
+  volume: "32"
+  start: "101409"
+  year: 2026
+  issn: "2590-0056"
+  publisher:
+    name: Elsevier
+  doi: "10.1016/j.array.2026.101409"
+  url: "https://doi.org/10.1016/j.array.2026.101409"
