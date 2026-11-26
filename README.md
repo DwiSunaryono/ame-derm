@@ -273,9 +273,9 @@ script with `--help`.
 
 ### Software archive
 
-The code in this repository is archived on Zenodo. Cite the version you used
-(`v1.0.0` below); the concept DOI `10.5281/zenodo.24563610` always resolves to
-the latest release.
+The code in this repository is archived on Zenodo. The concept DOI below
+always resolves to the latest release; each release also has its own version
+DOI on the Zenodo record.
 
 ```bibtex
 @software{sunaryono2026amederm_code,
@@ -285,11 +285,11 @@ the latest release.
   title     = {AME-Derm: An Asymmetric Anatomical Mixture-of-Experts with a
                Data-Driven Rare-Class Verification Algorithm for Dermoscopic
                Skin-Lesion Classification},
-  version   = {1.0.0},
+  version   = {1.0.1},
   year      = {2026},
   publisher = {Zenodo},
-  doi       = {10.5281/zenodo.24563611},
-  url       = {https://doi.org/10.5281/zenodo.24563611}
+  doi       = {10.5281/zenodo.24563610},
+  url       = {https://doi.org/10.5281/zenodo.24563610}
 }
 ```
 
